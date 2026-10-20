@@ -266,6 +266,11 @@ body.warning-open{overflow:hidden}
 .limit-feedback[data-state="error"]{color:#b64c3a}
 .limit-feedback[data-state="demo"]{color:#7d8d9c}
 @media(max-width:530px){.limit-direct{grid-template-columns:1fr;gap:7px}.limit-direct-form{justify-content:space-between}.limit-direct input{flex:1;max-width:115px}}
+
+.real-model-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.real-model-option{min-width:0}
+.model-line{flex-wrap:wrap}
+@media(max-width:900px){.real-model-grid{grid-template-columns:1fr}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -301,17 +306,35 @@ body.warning-open{overflow:hidden}
     <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">CREATOR 3D</small><span id="carModelAccuracy">CREATOR MODEL</span></div></div>
   </div>
   <div class="car-options"><span class="eyebrow">VERIFIED 3D COLLECTION</span><h2>Select your vehicle</h2>
-    <p>Only cars with real, creator-uploaded 3D models are shown here. Tap a car to load its 360° viewer. These are community models, not manufacturer CAD.</p>
-    <div class="real-model-grid" role="group" aria-label="Available 3D models">
+    <p>Only cars with licensed, creator-hosted 3D models are shown here. Pick a vehicle to open 360°; model fidelity and generation can vary. No manufacturer CAD.</p>
+    <div class="real-model-grid" role="group" aria-label="Licensed real 3D cars">
       <button type="button" class="real-model-option" data-realmodel="myvi" aria-pressed="false">
-        <span class="model-line"><strong>Perodua Myvi</strong><span class="model-ready">3D AVAILABLE</span></span>
-        <span class="model-details">Generation not confirmed by creator</span>
-        <span class="model-maker">zairiq-123 · CC BY</span>
+        <span class="model-line"><strong>Perodua Myvi</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">Generation unverified</span><span class="model-maker">zairiq-123 · CC BY</span>
       </button>
-      <button type="button" class="real-model-option" data-realmodel="saga" aria-pressed="false">
-        <span class="model-line"><strong>Proton Saga</strong><span class="model-ready">3D AVAILABLE</span></span>
-        <span class="model-details">1985 · first generation</span>
-        <span class="model-maker">zairiq-123 · CC BY</span>
+      <button type="button" class="real-model-option" data-realmodel="saga-lite" aria-pressed="false">
+        <span class="model-line"><strong>Proton Saga 1985</strong><span class="model-ready">LIGHTWEIGHT</span></span>
+        <span class="model-details">First generation · optimized for tablet viewing (6.3k triangles)</span><span class="model-maker">zairiq-123 · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="saga-hd" aria-pressed="false">
+        <span class="model-line"><strong>Proton Saga 1985 HD</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">First generation · high-detail alternative (340k triangles)</span><span class="model-maker">zairiq-123 · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="x50" aria-pressed="false">
+        <span class="model-line"><strong>Proton X50</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">Community model · trim / generation unverified</span><span class="model-maker">crack122001 · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="waja" aria-pressed="false">
+        <span class="model-line"><strong>Proton Waja</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">Community model · high-poly (595k triangles)</span><span class="model-maker">thilath · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="jumbuck" aria-pressed="false">
+        <span class="model-line"><strong>Proton Jumbuck</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">Export-market utility model · 119k triangles</span><span class="model-maker">Nieve5677 · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="civic" aria-pressed="false">
+        <span class="model-line"><strong>Honda Civic FE · PDRM</strong><span class="model-ready">REAL 3D</span></span>
+        <span class="model-details">2022 Malaysia police vehicle · not standard road trim</span><span class="model-maker">tarenrafebuwy · CC BY</span>
       </button>
     </div>
     <div class="selected-model-note" role="status" aria-live="polite" id="selectedModelNote">Select a car to open its creator-hosted 3D model.</div>
@@ -320,7 +343,7 @@ body.warning-open{overflow:hidden}
       <label for="chooseModel">MODEL<select id="chooseModel" tabindex="-1"></select></label>
       <label for="chooseGeneration">GENERATION<select id="chooseGeneration" tabindex="-1"></select></label>
     </div>
-    <div class="catalog-caption">2 verified 3D sources · all other models are hidden until a suitable licensed 3D model is available.</div>
+    <div class="catalog-caption">7 creator-hosted 3D sources · all other models stay hidden until a matching license is verified. Source models can require Internet and WebGL.</div>
     <div id="referenceSnippet" class="reference-snippet" hidden><img id="referenceThumb" alt="Optional car photograph" loading="lazy" referrerpolicy="no-referrer"><div><strong>Reference</strong><small id="referenceTitle"></small><a id="referenceLink" target="_blank" rel="noopener noreferrer">Photo source</a></div></div>
     <span class="body-options-title" hidden>ILLUSTRATION COLOR</span>
     <div class="paint-options" role="group" aria-label="Illustrative body color" hidden>
@@ -699,10 +722,21 @@ body.warning-open{overflow:hidden}
   // Strictly selected creator-hosted downloadable CC BY 3D assets.
   // Myvi generation is unspecified by artist; never expose fabricated Gen1/2/3 choices.
   const vehicleCatalog={
-    'Perodua':{'Myvi':['hatch',[['Generation unverified','myvi3']]]},
-    'Proton':{'Saga 1985':['sedan',[['1985 · First generation','saga1']]]}
+    'Perodua':{
+      'Myvi':['hatch',[['Generation unverified','myvi3']]]
+    },
+    'Proton':{
+      'Saga 1985':['sedan',[['1985 · First generation','saga1']]],
+      'Saga 1985 HD':['sedan',[['1985 · First generation / detailed','saga1']]],
+      'X50':['suv',[['Generation / trim unverified','x50']]],
+      'Waja':['sedan',[['Generation unverified','']]],
+      'Jumbuck':['pickup',[['Export-market utility model','']]]
+    },
+    'Honda':{
+      'Civic FE PDRM':['sedan',[['2022 Malaysian police variant','']]]
+    }
   };
-  // Hand-crafted starting geometry for well-known Malaysian shapes (not OEM measurements).
+    // Hand-crafted starting geometry for well-known Malaysian shapes (not OEM measurements).
   const genericGeometry={
     hatch:[91,1.38,.39,.49,1.12],sedan:[95,1.78,.38,.53,.95],
     suv:[104,1.79,.50,.64,1.34],mpv:[102,1.92,.47,.74,1.48],
@@ -1052,48 +1086,87 @@ body.warning-open{overflow:hidden}
     myvi:{
       embed:'https://sketchfab.com/models/4f62bfca654643c3858a7688e7a708ed/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
       source:'https://sketchfab.com/3d-models/myvi-4f62bfca654643c3858a7688e7a708ed',
-      label:'Perodua Myvi community 3D · zairiq-123 · CC BY · generation unverified',
-      accuracy:'Perodua Myvi 3D reference; creator did not identify the generation. This is NOT a confirmed match to your selected Myvi generation.'
+      label:'Perodua Myvi · zairiq-123 · CC BY',
+      accuracy:'Myvi generation is unverified. Do NOT interpret this 3D reference as an exact match to Gen 1, 2 or 3.'
     },
-    saga1:{
+    'saga-lite':{
+      embed:'https://sketchfab.com/models/e34de48e167243d997719dfe293efbad/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
+      source:'https://sketchfab.com/3d-models/proton-saga-1985-e34de48e167243d997719dfe293efbad',
+      label:'Proton Saga 1985 low-poly original · zairiq-123 · CC BY',
+      accuracy:'First generation Saga 1985, community 3D interpretation (approximately 6,300 polygons / triangles). Best for tablets.'
+    },
+    'saga-hd':{
       embed:'https://sketchfab.com/models/7e8adb5d0d2e4dfca405e07567835406/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
       source:'https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406',
-      label:'Proton Saga 1985 community 3D · zairiq-123 · CC BY',
-      accuracy:'Community-made Proton Saga 1985 interpretation, not OEM-approved CAD. A high-poly model; it may be slow on older tablets.'
+      label:'Proton Saga 1985 detailed original · zairiq-123 · CC BY',
+      accuracy:'First generation Saga 1985, community interpretation, not OEM CAD. Heavy scene (~340k triangles).'
+    },
+    x50:{
+      embed:'https://sketchfab.com/models/77d780d5f22e49239ccb15b49d269025/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
+      source:'https://sketchfab.com/3d-models/proton-x50-arletalink-77d780d5f22e49239ccb15b49d269025',
+      label:'Proton X50 ARLETALINK · crack122001 · CC BY',
+      accuracy:'Creator labels this X50 for ARLETALINK; year, trim and generation not confirmed. ~317k triangles.'
+    },
+    waja:{
+      embed:'https://sketchfab.com/models/92443d2ccf2e44a5bbf7320d3dfe38ae/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
+      source:'https://sketchfab.com/3d-models/proton-waja-92443d2ccf2e44a5bbf7320d3dfe38ae',
+      label:'Proton Waja · thilath · CC BY',
+      accuracy:'Community Proton Waja model without generation specification. Heavy (~595k triangles); slower on tablets.'
+    },
+    jumbuck:{
+      embed:'https://sketchfab.com/models/65f15580b9d848ab8570347e6df861fa/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
+      source:'https://sketchfab.com/3d-models/proton-jumbuck-65f15580b9d848ab8570347e6df861fa',
+      label:'Proton Jumbuck · Nieve5677 · CC BY',
+      accuracy:'Export-market Proton Jumbuck utility vehicle; local market branding or year not verified. ~119k triangles.'
+    },
+    civic:{
+      embed:'https://sketchfab.com/models/b3306f377c694fb0925996411bd1c6d5/embed?autostart=1&ui_infos=1&ui_controls=1&dnt=1',
+      source:'https://sketchfab.com/3d-models/honda-civic-malaysia-police-car-b3306f377c694fb0925996411bd1c6d5',
+      label:'Honda Civic FE (2022) Malaysia police · tarenrafebuwy · CC BY',
+      accuracy:'2022 Honda Civic FE in Malaysia PDRM police livery, not a civilian trim. Model originally credited to Danial Ahmad (Bandit.545), polished by Taren Lee.'
     }
   };
-  let realRef=null,licensedReady=false,chosenCreator3D=null,vehicleView='top';
+  const real3DChoices={
+    myvi:['Perodua','Myvi'],
+    'saga-lite':['Proton','Saga 1985'],
+    'saga-hd':['Proton','Saga 1985 HD'],
+    x50:['Proton','X50'],
+    waja:['Proton','Waja'],
+    jumbuck:['Proton','Jumbuck'],
+    civic:['Honda','Civic FE PDRM']
+  };
+  const creatorKeyFor=(brand,model)=>{
+    return Object.keys(real3DChoices).find(key=>real3DChoices[key][0]===brand&&real3DChoices[key][1]===model)||null;
+  };
+    let realRef=null,licensedReady=false,chosenCreator3D=null,vehicleView='top';
   function updateMediaReference(){
-    const isMyvi=vehicleMeta?.brand==='Perodua'&&vehicleMeta?.model==='Myvi';
-    chosenCreator3D=isMyvi?reference3DModels.myvi:reference3DModels.saga1;
+    const key=creatorKeyFor(vehicleMeta?.brand,vehicleMeta?.model);
+    chosenCreator3D=reference3DModels[key]||null;
     licensedReady=!!chosenCreator3D;
     realRef=null;
     $('referenceSnippet').hidden=true;
     $('viewPhoto').hidden=true;
-    $('viewLicensed').hidden=true; // Real 3D is now the sole supported overview view.
+    $('viewLicensed').hidden=true;
+    if(!chosenCreator3D)return;
     $('creator3DDescription').textContent=chosenCreator3D.label;
     $('creator3DLink').href=chosenCreator3D.source;
-    $('licensedDisclaimer').textContent=chosenCreator3D.accuracy+' Creator-hosted Sketchfab model. The original model and author credit are linked above.';
-    $('selectedModelNote').textContent=isMyvi
-      ?'Myvi: real community-made 3D model, but generation is not verified. Do not treat this mesh as a particular Myvi generation.'
-      :'Saga: real community-made 1985 model. The original 3D mesh may take longer to load on older tablets.';
-    document.querySelectorAll('[data-realmodel]').forEach(b=>{
-      const on=b.dataset.realmodel===(isMyvi?'myvi':'saga');
-      b.classList.toggle('selected',on);
-      b.setAttribute('aria-pressed',String(on));
+    $('licensedDisclaimer').textContent=chosenCreator3D.accuracy+' Source: creator-hosted Sketchfab viewer; no 3D files are rehosted or modified.';
+    $('selectedModelNote').textContent=chosenCreator3D.accuracy;
+    document.querySelectorAll('[data-realmodel]').forEach(button=>{
+      const active=button.dataset.realmodel===key;
+      button.classList.toggle('selected',active);
+      button.setAttribute('aria-pressed',String(active));
     });
-    if(vehicleView==='licensed'&&$('licensedFrame').getAttribute('src')!==chosenCreator3D.embed){
+    if(vehicleView==='licensed'&&$('licensedFrame').getAttribute('src')!==chosenCreator3D.embed)
       $('licensedFrame').src=chosenCreator3D.embed;
-    }
   }
   document.querySelectorAll('[data-realmodel]').forEach(button=>button.addEventListener('click',()=>{
-    const isMyvi=button.dataset.realmodel==='myvi';
-    selectedBrand=isMyvi?'Perodua':'Proton';
-    selectedModel=isMyvi?'Myvi':'Saga 1985';
-    selectedGen=isMyvi?'Generation unverified':'1985 · First generation';
+    const selected=real3DChoices[button.dataset.realmodel];
+    if(!selected)return;
+    selectedBrand=selected[0];selectedModel=selected[1];selectedGen='';
     setVehicleSelection();
   }));
-  function setVehicleView(view){
+    function setVehicleView(view){
     if(!licensedReady)return;
     view='licensed';
     vehicleView=view;
@@ -1101,7 +1174,7 @@ body.warning-open{overflow:hidden}
     $('carDrawing').hidden=view!=='top';$('carFront').hidden=view!=='top';
     $('photoPane').hidden=view!=='photo';$('licensedPane').hidden=view!=='licensed';
     if(view==='licensed'&&chosenCreator3D&&$('licensedFrame').getAttribute('src')!==chosenCreator3D.embed)$('licensedFrame').src=chosenCreator3D.embed;
-    else if($('licensedFrame').getAttribute('src'))$('licensedFrame').removeAttribute('src');
+    if(view!=='licensed'&&$('licensedFrame').getAttribute('src'))$('licensedFrame').removeAttribute('src');
     [['view2D','top'],['view3D','3d'],['viewPhoto','photo'],['viewLicensed','licensed']].forEach(([id,state])=>{
       $(id).classList.toggle('active',view===state);$(id).setAttribute('aria-pressed',String(view===state))
     });
@@ -1112,8 +1185,8 @@ body.warning-open{overflow:hidden}
     $('carDrawing').innerHTML=car;
     document.querySelector('.carpanel .vehicle').innerHTML=car;
     $('carName').textContent=vehicleMeta?vehicleMeta.brand+' '+vehicleMeta.model:shapeData[shape][0];
-    $('carDescription').textContent=vehicleMeta?.brand==='Perodua'?'Real 3D · generation not verified':'1985 · real 3D community model';
-    $('carModelAccuracy').textContent=vehicleMeta?.brand==='Perodua'?'GENERATION UNVERIFIED':'1985 / COMMUNITY 3D';
+    $('carDescription').textContent=vehicleMeta?vehicleMeta.generation+' · CC BY creator 3D':'Community 3D';
+    $('carModelAccuracy').textContent=vehicleMeta?.model==='Myvi'?'GENERATION UNVERIFIED':'COMMUNITY 3D · NON-OEM';
     $('carPaint').textContent='CC BY';
     document.querySelectorAll('[data-shape]').forEach(b=>{const active=b.dataset.shape===shape;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
     document.querySelectorAll('[data-carpaint]').forEach(b=>{const active=b.dataset.carpaint===paint;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
