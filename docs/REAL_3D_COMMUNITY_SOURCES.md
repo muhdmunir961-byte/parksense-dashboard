@@ -1,24 +1,30 @@
-# ParkSense community 3D model sources
+# ParkSense — Real-3D-only vehicle selector (Option B)
 
-The website uses externally hosted models with the creators' own interactive Sketchfab viewer. These are original community-authored 3D meshes, not AI-reconstructed photos or manufacturer CAD.
+## Shown on Vehicle Overview
 
-## Verified models
+Exactly **two selectable cars** are shown. Other brands, model names, generations and procedural-3D view modes are no longer exposed on Vehicle Overview.
 
-1. **Perodua Myvi** by **zairiq-123** — CC Attribution (CC BY).
-   Source: https://sketchfab.com/3d-models/myvi-4f62bfca654643c3858a7688e7a708ed
-   Sketchfab ID: `4f62bfca654643c3858a7688e7a708ed`.
-   The creator did not identify generation: **do not claim an exact match to Gen1/2/3**.
+1. **Perodua Myvi** — model by **zairiq-123**, CC Attribution / CC BY. Generation **unverified**; never imply this is a faithful Myvi Gen 1, 2 or 3 mesh.
+   - Original: https://sketchfab.com/3d-models/myvi-4f62bfca654643c3858a7688e7a708ed
+   - Sketchfab ID: `4f62bfca654643c3858a7688e7a708ed`
+   - 36.8k triangles / 22.7k vertices as listed by creator.
 
-2. **Proton Saga car red 1985** by **zairiq-123** — CC Attribution (CC BY).
-   Source: https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406
-   Sketchfab ID: `7e8adb5d0d2e4dfca405e07567835406`.
-   Model is community authored (not OEM CAD) and may be large on older tablets.
+2. **Proton Saga 1985** — model by **zairiq-123**, CC Attribution / CC BY. Original first-generation Saga interpretation, not manufacturer CAD.
+   - Original: https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406
+   - Sketchfab ID: `7e8adb5d0d2e4dfca405e07567835406`
+   - 340.2k triangles / 200.3k vertices, potentially slow on older tablets.
 
-Dashboard file `public/index.html` contains the `reference3DModels` mapping with author credits and source links, `REAL 3D ↗` toggle, lazy-loading Sketchfab iframe only on user selection, and clear warnings for generation mismatch. It preserves 2D TOP, on-device geometric 3D 360, optional licensed photo references and read-only ESP32 telemetry. CSP in `server.js` allows `frame-src https://sketchfab.com`. Embedding is subject to Sketchfab terms; no third-party 3D binary is copied into this repo. License/attribution links remain visible in the UI.
+## Implementation
 
-## Accurate generation-specific models: future work
+- Main file: `public/index.html`. Brand/model chooser replaced with two selectable buttons, with exactly one internal generation label per asset.
+- Previously stored localStorage choices for unavailable vehicles fall back safely to the available Myvi or Saga 1985 model. The original two catalog dropdowns remain hidden only for backward compatibility.
+- Creator-hosted real Sketchfab 3D viewer is displayed **automatically** on opening Overview and changes with model selection. This loads content from Sketchfab; internet access is required.
+- 2D and procedurally generated 3D are **not offered as model viewer options**. The Parking Assist page retains a separate top-view **schematic** illustrating the four physical ESP-NOW sensor positions, not a claim of official car geometry.
+- Creator links and generation-accuracy caveats appear directly below each viewer.
+- No Sketchfab 3D binary is copied, altered, re-licensed or rehosted. The owner retains the original model.
+- ESP32 firmware, GPS, sensor thresholds, browser warning events, physical LED/buzzer behavior and server authorization are untouched.
+- Next real 3D model should be added only when artist identity, license, model identity and generation match have been checked.
 
-To build faithful Myvi Gen1/2/3, Saga variants, etc., collect licensed multi-angle reference photos (front, back, side and top), then create/verify a Blender mesh and optimize it to local .glb (ideally under 1–3 MB per car). Render with a web glTF viewer with touch orbit. Verify copyright, permission and proper CC BY credit before distributing derived assets. Do not extract models not offered for download, or misrepresent a generic mesh as OEM-accurate.
+## QA and known limitations
 
-Sketchfab documentation: https://sketchfab.com/developers/viewer/initialization
-License primer: https://sketchfab.com/blogs/community/an-introduction-to-creative-commons-licenses/
+JavaScript syntax and duplicate DOM IDs are checked prior to GitHub push. Coolify deployment and real-tablet rendering must still be verified after deployment. Third-party model availability can change.
