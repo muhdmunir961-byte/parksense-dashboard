@@ -4,7 +4,14 @@
   "private": true,
   "description": "Secure HTTPS telemetry relay for ParkSense ESP32 sensor dashboard",
   "main": "server.js",
-  "scripts": {"start": "node server.js", "test": "node --test tests/server.test.js"},
-  "engines": {"node": ">=20"},
-  "dependencies": {"ws": "^8.18.0"}
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
 }
