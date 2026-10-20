@@ -1017,14 +1017,14 @@ body.warning-open{overflow:hidden}
     selectedGen=isMyvi?'Generation unverified':'1985 · First generation';
     setVehicleSelection();
   }));
-    function setVehicleView(view){
+  function setVehicleView(view){
     if(!licensedReady)return;
     view='licensed';
     vehicleView=view;
     set3DView(view==='3d');
     $('carDrawing').hidden=view!=='top';$('carFront').hidden=view!=='top';
     $('photoPane').hidden=view!=='photo';$('licensedPane').hidden=view!=='licensed';
-    if(view==='licensed'&&chosenCreator3D)$('licensedFrame').src=chosenCreator3D.embed;
+    if(view==='licensed'&&chosenCreator3D&&$('licensedFrame').getAttribute('src')!==chosenCreator3D.embed)$('licensedFrame').src=chosenCreator3D.embed;
     else if($('licensedFrame').getAttribute('src'))$('licensedFrame').removeAttribute('src');
     [['view2D','top'],['view3D','3d'],['viewPhoto','photo'],['viewLicensed','licensed']].forEach(([id,state])=>{
       $(id).classList.toggle('active',view===state);$(id).setAttribute('aria-pressed',String(view===state))
