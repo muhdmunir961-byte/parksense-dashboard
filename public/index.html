@@ -93,6 +93,61 @@ body{background:var(--bg);color:var(--text);font-size:14px}
 @media(max-width:420px){.zone-row{padding:14px 8px}.zone-label{font-size:10px}.zone-icon{width:24px;height:24px}.zone-status{font-size:9px}.zone-dist{font-size:14px}.sensor-pill[data-dir="L"]{left:0}.sensor-pill[data-dir="Rt"]{right:0}.vehicle{height:189px;width:85px}.radar-lines{width:226px;height:226px}.car-arena{height:315px}.carpanel{min-height:405px}.legend-group{gap:8px}.legend{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.vehicle-dock{backdrop-filter:none}}
 
+
+/* PARKSENSE HMI v2 — focused safety controls, restrained e.MAS-inspired design */
+:root{--ps-blue:#2f70b4;--ps-red:#bb392d;--ps-amber:#a87421}
+.safety-ribbon{display:grid;grid-template-columns:1fr auto;align-items:center;gap:20px;border:1px solid #dce3e9;border-left:5px solid #7397b7;border-radius:11px;background:#f7fafc;padding:15px 19px;margin-bottom:15px;transition:background .2s,border-color .2s}
+.safety-ribbon.warning{border-left-color:#d0953c;background:#fff9ec;border-color:#ecdcc5}
+.safety-ribbon.danger{border-left-color:#cb4b40;background:#fff4f2;border-color:#edd0c9}
+.safety-ribbon.normal{border-left-color:#48856d;background:#f2f8f4;border-color:#d2e3d9}
+.safety-ribbon .sr-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.15px;color:#6e8190;margin-bottom:4px;text-transform:uppercase}
+.safety-ribbon .sr-title{font-size:18px;font-weight:750;letter-spacing:-.5px;line-height:1.25}
+.safety-ribbon .sr-copy{font-size:12px;color:#78838e;margin-top:4px;max-width:740px}
+.safety-ribbon .sr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:end}
+.hmi-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:10px 14px;font:700 12px/1.2 inherit;border:1px solid #d7e0e8;border-radius:8px;background:#fff;color:#304759;cursor:pointer;white-space:nowrap}
+.hmi-btn:hover{background:#eaf1f8}.hmi-btn:focus-visible{outline:3px solid #9fc5e6;outline-offset:2px}
+.hmi-btn.blue{background:#306da7;border-color:#306da7;color:#fff}.hmi-btn.blue:hover{background:#245f96}
+.hmi-btn.urgent{background:#ad4038;border-color:#ad4038;color:#fff}.hmi-btn.urgent:hover{background:#92342c}
+.hmi-btn:disabled{opacity:.5;cursor:not-allowed}
+.hmi-btn.subtle{background:transparent}
+.safety-ribbon .sr-action-hint{font-size:10px;color:#768994;flex-basis:100%;text-align:right}
+.io-panel{margin:0 0 15px;background:#fff;border:1px solid #e1e6eb;border-radius:11px;overflow:hidden}
+.io-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid #e7ecf0}
+.io-header strong{font-size:12px;font-weight:750}.io-header span{font-size:10px;color:#8b97a3}
+.io-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.io-item{display:flex;align-items:center;gap:10px;padding:13px 18px;min-width:0;border-right:1px solid #e8edf1}
+.io-item:last-child{border-right:0}
+.io-led{height:12px;width:12px;border-radius:50%;border:2px solid #ced8e0;background:#f4f6f8;flex:none;transition:all .12s}
+.io-led.red.on{background:#d7483f;border-color:#ab342f;box-shadow:0 0 0 3px #fbe4e1}
+.io-led.yellow.on{background:#e3b151;border-color:#c78e28;box-shadow:0 0 0 3px #fff0d2}
+.io-led.green.on{background:#48a482;border-color:#358263;box-shadow:0 0 0 3px #dcf3e8}
+.io-led.buzzer.on{background:#2f70b4;border-color:#245f96;box-shadow:0 0 0 3px #e0edfa}
+.io-item b{display:block;font-size:11px;line-height:1.2}.io-item small{display:block;font-size:10px;color:#929fab;margin-top:3px}
+.hmi-audio{display:flex;align-items:center;justify-content:space-between;gap:18px;background:#fff;border:1px solid #dfe6ed;border-radius:11px;padding:17px 20px;margin-top:15px}
+.hmi-audio p{margin:5px 0 0;color:#8c9baa;font-size:11px;max-width:590px;line-height:1.6}
+.hmi-audio-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.audio-pill{font-size:10px;font-weight:800;letter-spacing:.4px;padding:6px 9px;border-radius:20px;background:#f0f3f7;color:#7b8894}
+.audio-pill.on{color:#296b55;background:#dff1e7}
+.log-action{border:1px solid #dfe5eb;background:#fff;border-radius:6px;color:#56728a;padding:6px 10px;font-size:10px;font-weight:750;cursor:pointer}
+.log-action:hover{background:#f0f5fa}
+.warning-overlay{position:fixed;inset:0;z-index:90;background:#10202fb3;display:flex;align-items:center;justify-content:center;padding:18px}
+.warning-overlay[hidden]{display:none}
+.warning-dialog{width:min(500px,100%);background:#fff;border-radius:15px;border:1px solid #e4e9ee;box-shadow:0 30px 90px #10182444;overflow:hidden}
+.warning-dialog:before{display:block;content:"";height:7px;background:#c94d40}
+.warning-dialog .wd-inner{padding:28px}
+.warning-dialog .wd-top{display:flex;gap:15px;align-items:center}
+.warning-dialog .wd-icon{font-weight:800;color:#b63c32;border:1px solid #efc9c4;border-radius:12px;background:#fff2f0;width:50px;height:50px;font-size:25px;display:grid;place-items:center;flex:none}
+.warning-dialog .wd-label{color:#a06159;font-size:10px;letter-spacing:1.4px;font-weight:850;text-transform:uppercase}
+.warning-dialog h2{font-weight:770;font-size:25px;line-height:1.15;letter-spacing:-.7px;margin:6px 0}
+.warning-dialog .wd-detail{font-size:13px;line-height:1.65;color:#647482;margin:21px 0}
+.warning-dialog .wd-note{font-size:11px;line-height:1.6;color:#617486;background:#eff4f8;border:1px solid #e2eaf1;border-radius:8px;padding:11px 12px}
+.warning-dialog .wd-actions{display:flex;gap:8px;margin-top:21px;flex-wrap:wrap}
+.warning-dialog .wd-actions .hmi-btn{flex:1;min-height:43px}
+body.warning-open{overflow:hidden}
+@media(max-width:960px){.io-grid{grid-template-columns:repeat(2,1fr)}.io-item:nth-child(2){border-right:0}.io-item:nth-child(-n+2){border-bottom:1px solid #e8edf1}}
+@media(max-width:680px){.safety-ribbon{grid-template-columns:1fr;padding:14px 15px;gap:11px}.safety-ribbon .sr-actions{justify-content:start}.safety-ribbon .sr-action-hint{text-align:left}.safety-ribbon .sr-title{font-size:17px}.hmi-audio{flex-direction:column;align-items:start;padding:15px}.hmi-audio-actions{width:100%}.hmi-audio-actions .hmi-btn{flex:1}.io-header{align-items:start;flex-direction:column;gap:3px}.io-item{padding:11px 12px}.warning-dialog .wd-inner{padding:20px}.warning-dialog h2{font-size:21px}.warning-dialog .wd-actions{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.safety-ribbon,.io-led{transition:none}}
+
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -109,12 +164,27 @@ body{background:var(--bg);color:var(--text);font-size:14px}
     <div class="utilitybar"><div class="breadcrumb">ParkSense <span style="color:#b1beb8;margin:0 9px">/</span> <strong>Monitor</strong></div><div class="utility-right"><span class="utag">ESP32 TELEMETRY</span><button class="logout" id="logoutBtn" type="button">Sign out</button></div></div>
     <div class="app" id="overview">
       <section class="intro"><div><div class="eyebrow">PARKSENSE / VEHICLE SYSTEM</div><h1>Park assist</h1><p>Intelligent parking awareness · GPS speed · four-zone proximity</p></div><div class="intro-right"><div class="timestamp" id="lastUpdate">Last update — demonstration</div><button class="outline-button" type="button" id="toConnection">Connection settings ↗</button></div></section>
+
+      <section id="safetyRibbon" class="safety-ribbon" role="status" aria-live="polite">
+        <div><div class="sr-eyebrow" id="ribbonLevel">SYSTEM MONITOR</div><div class="sr-title" id="ribbonTitle">Connecting to controller</div><div class="sr-copy" id="ribbonCopy">Live warning status appears here when a sensor or speed threshold is triggered.</div></div>
+        <div class="sr-actions"><button class="hmi-btn blue" type="button" id="openWarningBtn" hidden>View warning</button><button class="hmi-btn" type="button" id="dismissWarningBtn" disabled>Acknowledge / Cancel warning</button><div class="sr-action-hint" id="ackState">Web notification only · hardware alarms remain active</div></div>
+      </section>
       <div class="statusbar" aria-label="System connection status">
         <div class="statusitem"><span class="micro">Display mode</span><span class="chip"><i class="dot demo" id="modeDot"></i><span id="modeText">DEMO MODE</span></span></div>
         <div class="statusitem"><span class="micro">Controller connection</span><span class="chip"><i class="dot bad" id="connectionDot"></i><span id="connectionText">DEVICE NOT CONNECTED</span></span></div>
         <div class="statusitem"><span class="micro">Parking switch</span><span class="chip"><i class="dot bad" id="parkingDot"></i><span id="parkingText">PARKING MODE —</span></span></div>
         <div class="statusitem"><span class="micro">Vehicle speed source</span><span class="mono">GPS RECEIVER / UART2</span></div>
       </div>
+
+      <section class="io-panel" aria-label="Predicted physical warning outputs">
+        <div class="io-header"><strong>Warning output monitor</strong><span>Estimated from telemetry · GPIO feedback not available</span></div>
+        <div class="io-grid">
+          <div class="io-item"><i id="ledRed" class="io-led red"></i><div><b>RED LED</b><small id="ledRedText">Standby</small></div></div>
+          <div class="io-item"><i id="ledYellow" class="io-led yellow"></i><div><b>YELLOW LED</b><small id="ledYellowText">Standby</small></div></div>
+          <div class="io-item"><i id="ledGreen" class="io-led green"></i><div><b>GREEN LED</b><small id="ledGreenText">Standby</small></div></div>
+          <div class="io-item"><i id="ledBuzzer" class="io-led buzzer"></i><div><b>ESP32 BUZZER</b><small id="ledBuzzerText">Standby</small></div></div>
+        </div>
+      </section>
       <main class="cards">
         <section class="panel speedpanel" aria-label="Vehicle GPS speed">
           <div class="panel-inner"><div class="speed-panel-top"><div class="panel-title">GPS speed</div><span class="live-pin" id="readingType">SIMULATED</span></div>
@@ -143,7 +213,7 @@ body{background:var(--bg);color:var(--text);font-size:14px}
             <div class="sensor-pill" data-dir="L" id="pillL"><div class="dir">LEFT</div><div class="reading" id="pillLValue">64 <small>cm</small></div></div>
             <div class="sensor-pill" data-dir="Rt" id="pillRt"><div class="dir">RIGHT</div><div class="reading" id="pillRtValue">95 <small>cm</small></div></div>
           </div>
-          <div class="vehicle-caption"><div class="legend-group"><span class="legend"><i></i> Normal</span><span class="legend"><i class="warning"></i> Caution &lt;55 cm</span><span class="legend"><i class="danger"></i> Danger &lt;35 cm</span></div><span class="small-index">FRONT ↑</span></div>
+          <div class="vehicle-caption"><div class="legend-group"><span class="legend"><i></i> Normal</span><span class="legend"><i class="warning"></i> Caution &lt;55 cm</span><span class="legend"><i class="danger"></i> Critical &lt;15 cm · Danger &lt;35 cm</span></div><span class="small-index">FRONT ↑</span></div>
         </section>
         <section class="panel zonepanel" id="sensorDiagnostics" aria-label="Individual ESP-NOW sensor status">
           <div class="zones-top"><div><div class="panel-title">Proximity sensors</div><div class="subnote">ESP-NOW linked ultrasonic sensors and motion detection</div></div><span class="micro" id="activePods">4 / 4 PODS</span></div>
@@ -158,9 +228,14 @@ body{background:var(--bg);color:var(--text);font-size:14px}
       </main>
       <section class="below" id="eventSection">
         <article class="panel alert-box" id="alertBox"><div class="panel-inner"><div class="panel-header"><div class="panel-title">System assessment</div><span class="micro">LIVE STATE</span></div><div class="alert-content"><div class="alert-symbol" id="alertSymbol">✓</div><div><div class="alert-headline" id="alertHeadline">Normal operation</div><div class="alert-description" id="alertDescription">Vehicle speed and detected distances are within the monitored thresholds.</div></div></div></div></article>
-        <article class="panel"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Activity log</div><span class="micro">LATEST EVENTS</span></div><div class="events-list" id="eventList" aria-live="polite"><div class="event"><span>Preview started in demo mode</span><time>—</time></div></div></div></article>
+        <article class="panel"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Activity log</div><button class="log-action" id="exportLogBtn" type="button">Export CSV ↓</button></div><div class="events-list" id="eventList" aria-live="polite"><div class="event"><span>Preview started in demo mode</span><time>—</time></div></div></div></article>
       </section>
       <section class="demo-tools" aria-label="Dashboard testing controls"><div><div class="panel-title">Preview scenarios</div><div class="subnote">Simulate sensor conditions — no commands sent to the controller.</div></div><div class="demo-actions"><button class="scenario is-active" type="button" data-profile="normal" aria-pressed="true">Normal</button><button class="scenario" type="button" data-profile="caution" aria-pressed="false">Caution</button><button class="scenario" type="button" data-profile="danger" aria-pressed="false">Critical</button><button class="scenario" type="button" data-profile="overspeed" aria-pressed="false">Overspeed</button></div></section>
+
+      <section class="hmi-audio" id="audioControls" aria-label="Browser alert sound controls">
+        <div><div class="panel-title">Warning sound</div><p>Optional audio from this browser. Enable sound once to hear incoming danger alerts. Mute and test affect this browser only; hardware LED and buzzer logic on the ESP32 are never disabled from here.</p></div>
+        <div class="hmi-audio-actions"><span id="audioStatus" class="audio-pill">BROWSER MUTED</span><button id="soundToggle" class="hmi-btn blue" type="button">Enable sound</button><button id="testSound" class="hmi-btn" type="button">Test beep</button></div>
+      </section>
       <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Connection settings</div><span class="micro">COOLIFY RELAY</span></div><p class="subnote">Live telemetry is streamed from the ESP32 via the Coolify server. Dashboard connects to the same host.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="wss://your-domain/ws"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Connect live</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">The ESP32 must send HTTPS telemetry to Coolify over a Wi-Fi connection. For ESP-NOW sensor pods, maintain 2.4 GHz channel 1 as configured in firmware.</div></div></section>
       <footer class="tiny-foot">PARKSENSE / ENGINEERING PROTOTYPE · ESP32 + ESP-NOW + GPS + ULTRASONIC + PIR · Monitoring and alerts only. No physical throttle or brake control is implemented.</footer>
     </div>
@@ -172,6 +247,15 @@ body{background:var(--bg);color:var(--text);font-size:14px}
       <div class="dock-clock" aria-label="Local time"><span id="systemClock">--:--</span><small>LOCAL TIME</small></div>
     </nav>
   </div>
+</div>
+
+<div id="warningOverlay" class="warning-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="warningDialogTitle" aria-describedby="warningDialogText">
+  <section class="warning-dialog"><div class="wd-inner">
+    <div class="wd-top"><div class="wd-icon">!</div><div><div class="wd-label" id="warningDialogLevel">CRITICAL SYSTEM ALERT</div><h2 id="warningDialogTitle">Obstacle detected</h2></div></div>
+    <p class="wd-detail" id="warningDialogText">An unsafe condition was detected.</p>
+    <div class="wd-note">Acknowledging closes the browser warning and silences this event's browser audio. It does not disable the ESP32 warning LEDs or hardware buzzer. Stay alert to physical hazards.</div>
+    <div class="wd-actions"><button id="modalAckBtn" class="hmi-btn urgent" type="button">Acknowledge warning</button><button id="modalMuteBtn" class="hmi-btn" type="button">Mute browser audio</button></div>
+  </div></section>
 </div>
 <script>
 (function(){
@@ -194,6 +278,156 @@ body{background:var(--bg);color:var(--text);font-size:14px}
   function updateControls(){let enabled=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN);['limitMinus','limitPlus','limitReset'].forEach(id=>$(id).disabled=!enabled);$('controlHint').textContent=mode==='demo'?'Demo controls only — simulated threshold.':remoteControl?'Remote control enabled':'Live dashboard is read-only. Adjust speed alert threshold with the ESP32 rotary encoder.';}
   function severity(dist,human){if(dist===-1||!Number.isFinite(dist)||dist<2)return'offline';if(dist<35)return'danger';if(dist<55||human===1)return'warn';return'good';}
   function formatDistance(dist){if(dist===-1||!Number.isFinite(dist)||dist<2)return 'OFFLINE';if(dist>=395)return '≥395 <small>cm</small>';return String(Math.round(dist))+' <small>cm</small>';}
+
+  // Browser-only warning UX. Commands are never sent to the ESP32.
+  let alertKind='normal', alertFingerprint='', acknowledgedFingerprint='', soundEnabled=false, audioContext=null, lastBrowserBeep=0;
+  let lastAlertTransition='';
+  let focusBeforeWarning=null;
+  function setOutput(id, on, value){
+    $(id).classList.toggle('on',!!on);$(id+'Text').textContent=value;
+  }
+  function predictedOutputs(status,min,speed,limit,humanFound,active) {
+    let red=false,yellow=false,green=false,buzzer='Off';
+    if (mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED')return {red,yellow,green,buzzer:'No telemetry'};
+    if (!telemetry.systemEnabled) return {red,yellow,green,buzzer:'Parking switch off'};
+    if (min<15){red=true;buzzer='Continuous alert'}
+    else if (speed>limit && speed>0){red=true;buzzer='Overspeed pulses'}
+    else if (min<35){red=true;buzzer='Rapid pulses'}
+    else if (min<55){yellow=true;buzzer='Slow pulses'}
+    else if (humanFound){yellow=true;buzzer='PIR double beep'}
+    else if (active>0){green=true;buzzer='Off'}
+    return {red,yellow,green,buzzer};
+  }
+  function closeWarning(){
+    $('warningOverlay').hidden=true;
+    document.body.classList.remove('warning-open');
+    if(focusBeforeWarning&&focusBeforeWarning.isConnected)focusBeforeWarning.focus();
+    focusBeforeWarning=null;
+  }
+  function showWarning(){
+    if(!['danger','critical','overspeed'].includes(alertKind)||$('warningOverlay').hidden===false)return;
+    focusBeforeWarning=document.activeElement;
+    $('warningDialogTitle').textContent=$('ribbonTitle').textContent;
+    $('warningDialogLevel').textContent=alertKind==='critical'?'CRITICAL PROXIMITY':alertKind==='overspeed'?'GPS OVERSPEED':'PROXIMITY WARNING';
+    $('warningDialogText').textContent=$('ribbonCopy').textContent;
+    $('warningOverlay').hidden=false;
+    document.body.classList.add('warning-open');
+    $('modalAckBtn').focus();
+  }
+  function acknowledgeWarning(){
+    if(!alertFingerprint)return;
+    acknowledgedFingerprint=alertFingerprint;
+    $('ackState').textContent='Acknowledged on this browser · ESP32 alerts are still active';
+    $('dismissWarningBtn').textContent='Acknowledged';
+    $('dismissWarningBtn').disabled=true;
+    closeWarning();
+    log('Warning acknowledged on browser · hardware unaffected');
+    refreshSoundUi();
+  }
+  function refreshSoundUi(){
+    $('soundToggle').textContent=soundEnabled?'Mute sound':'Enable sound';
+    $('soundToggle').classList.toggle('blue',!soundEnabled);
+    $('audioStatus').textContent=soundEnabled?'BROWSER SOUND ON':'BROWSER MUTED';
+    $('audioStatus').classList.toggle('on',soundEnabled);
+  }
+  async function enableAudio(){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC){log('Web audio unavailable in this browser');return false;}
+    if(!audioContext)audioContext=new AC();
+    try{await audioContext.resume();return audioContext.state==='running'}catch{return false}
+  }
+  function playBeep(duration=160,freq=740,volume=.09,delay=0){
+    if(!audioContext||audioContext.state!=='running')return;
+    const osc=audioContext.createOscillator(),gain=audioContext.createGain(),start=audioContext.currentTime+delay;
+    osc.type='sine';osc.frequency.setValueAtTime(freq,start);
+    gain.gain.setValueAtTime(.0001,start);gain.gain.linearRampToValueAtTime(volume,start+.014);
+    gain.gain.setValueAtTime(volume,start+Math.max(.03,duration/1000-.03));
+    gain.gain.linearRampToValueAtTime(.0001,start+duration/1000);
+    osc.connect(gain);gain.connect(audioContext.destination);osc.start(start);osc.stop(start+duration/1000+.03);
+  }
+  function browserSoundTick(){
+    if(!soundEnabled||alertKind==='normal'||alertFingerprint===acknowledgedFingerprint)return;
+    if(mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED')return;
+    if(!telemetry.systemEnabled||!audioContext||audioContext.state!=='running')return;
+    if(Date.now()-lastBrowserBeep<1400)return;
+    if(alertKind==='critical'){playBeep(370,850,.11);}
+    else if(alertKind==='overspeed'){playBeep(145,760,.09);playBeep(145,760,.09,.27);}
+    else if(alertKind==='danger'){playBeep(220,730,.09);}
+    else if(alertKind==='caution'){playBeep(95,640,.07);}
+    else if(alertKind==='motion'){playBeep(105,580,.06);playBeep(105,580,.06,.35);}
+    lastBrowserBeep=Date.now();
+  }
+  function syncWarningDisplay({headline,message,tone,speed,limit,min,humanFound,active}){
+    let kind='normal';
+    const connected=mode==='demo'||$('connectionText').textContent==='DEVICE CONNECTED';
+    if (!connected)kind='offline';
+    else if(!telemetry.systemEnabled)kind='standby';
+    else if(active===0)kind='offline';
+    else if(min<15)kind='critical';
+    else if(speed>limit&&speed>0)kind='overspeed';
+    else if(min<35)kind='danger';
+    else if(min<55)kind='caution';
+    else if(humanFound)kind='motion';
+    alertKind=kind;
+    const isHazard=['critical','overspeed','danger','caution','motion'].includes(kind);
+    const code=isHazard?kind+':'+(min<55?Math.max(0,Math.floor(min/5)):Math.round(speed/5)):kind;
+    // Distinct alert class/zone produces a new event. Small fluctuations do not repeatedly open dialogs.
+    const fingerprint=isHazard?kind+':'+(min<55?zones.find(([k,d])=>Number(telemetry[d])===min)?.[0]||'near':'speed'):'';
+    const wasFingerprint=alertFingerprint;
+    alertFingerprint=fingerprint;
+    if (!isHazard)acknowledgedFingerprint='';
+    $('safetyRibbon').className='safety-ribbon '+(kind==='normal'?'normal':['critical','overspeed','danger'].includes(kind)?'danger':kind==='caution'||kind==='motion'?'warning':'');
+    $('ribbonLevel').textContent=kind==='normal'?'SYSTEM NORMAL':kind==='offline'?'SENSOR CONNECTION':kind==='standby'?'PARKING MODE DISABLED':kind==='critical'?'CRITICAL / STOP':kind==='overspeed'?'SPEED WARNING':'SAFETY WARNING';
+    $('ribbonTitle').textContent=headline;
+    $('ribbonCopy').textContent=message;
+    $('dismissWarningBtn').disabled=!isHazard||fingerprint===acknowledgedFingerprint;
+    $('dismissWarningBtn').textContent=isHazard&&fingerprint===acknowledgedFingerprint?'Acknowledged':'Acknowledge / Cancel warning';
+    $('openWarningBtn').hidden=!['critical','overspeed','danger'].includes(kind)||fingerprint===acknowledgedFingerprint;
+    $('ackState').textContent=isHazard&&fingerprint===acknowledgedFingerprint?'Acknowledged locally · device alerts still active':'Browser-only acknowledgment · hardware alerts unaffected';
+    if(fingerprint!==wasFingerprint){
+      closeWarning();
+      lastBrowserBeep=0;
+      if(['critical','overspeed','danger'].includes(kind) && fingerprint!==acknowledgedFingerprint)showWarning();
+    }
+    const outputs=predictedOutputs(kind,min,speed,limit,humanFound,active);
+    setOutput('ledRed',outputs.red,outputs.red?'Expected ON / blinking':'Off');
+    setOutput('ledYellow',outputs.yellow,outputs.yellow?'Expected ON':'Off');
+    setOutput('ledGreen',outputs.green,outputs.green?'Expected ON':'Off');
+    setOutput('ledBuzzer',outputs.buzzer!=='Off'&&outputs.buzzer!=='No telemetry'&&outputs.buzzer!=='Parking switch off',outputs.buzzer);
+  }
+  $('dismissWarningBtn').addEventListener('click',acknowledgeWarning);
+  $('modalAckBtn').addEventListener('click',acknowledgeWarning);
+  $('openWarningBtn').addEventListener('click',showWarning);
+  $('modalMuteBtn').addEventListener('click',()=>{
+    soundEnabled=false;refreshSoundUi();log('Browser warning sound muted');$('modalAckBtn').focus();
+  });
+  $('soundToggle').addEventListener('click',async()=>{
+    if(soundEnabled){soundEnabled=false;refreshSoundUi();log('Browser warning sound muted');return;}
+    soundEnabled=await enableAudio();refreshSoundUi();
+    log(soundEnabled?'Browser warning sound enabled':'Unable to enable browser audio');
+    if(soundEnabled)playBeep(110,700,.055);
+  });
+  $('testSound').addEventListener('click',async()=>{
+    if(!(await enableAudio())){log('Web audio unavailable');return}
+    playBeep(160,800,.08);playBeep(160,800,.08,.34);
+    log('Browser beep tested · hardware unaffected');
+  });
+  $('exportLogBtn').addEventListener('click',()=>{
+    const lines=['"Time","Event"',...eventLog.map(e=>'"'+e.time.replace(/"/g,'""')+'","'+e.message.replace(/"/g,'""')+'"')];
+    const blob=new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='parksense-events.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!$('warningOverlay').hidden)acknowledgeWarning();
+    if(e.key==='Tab'&&!$('warningOverlay').hidden){
+      const focusables=[$('modalAckBtn'),$('modalMuteBtn')],ix=focusables.indexOf(document.activeElement);
+      if(e.shiftKey&&ix===0){e.preventDefault();focusables[1].focus()}
+      else if(!e.shiftKey&&ix===1){e.preventDefault();focusables[0].focus()}
+    }
+  });
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)lastBrowserBeep=Date.now()});
+  setInterval(browserSoundTick,1150);
+
   function render(){
     let speed=Number(telemetry.maxSpeed)||0,limit=Number(telemetry.speedLimit)||15;
     speed=Math.max(0,Math.min(999,speed));limit=Math.max(5,Math.min(100,limit));
@@ -227,6 +461,7 @@ body{background:var(--bg);color:var(--text);font-size:14px}
     else if(min<55){headline='Approaching obstacle';message='Detected object is 35–54 cm away. Yellow caution zone.';tone='warn';symbol='!';}
     else if(humanFound){headline='Motion detected';message='A PIR sensor has detected movement near the vehicle.';tone='warn';symbol='!';}
     $('alertBox').className='panel alert-box'+(tone?' '+tone:'');$('alertSymbol').textContent=symbol;$('alertHeadline').textContent=headline;$('alertDescription').textContent=message;
+    syncWarningDisplay({headline,message,tone,speed,limit,min,humanFound,active});
     if(headline!==lastAlert){lastAlert=headline;log((mode==='demo'?'[Demo] ':'')+headline);}
   }
   function parseData(payload){
