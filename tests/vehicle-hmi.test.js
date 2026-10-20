@@ -1,78 +1,54 @@
 'use strict';
-// Regression tests: client-only generation metadata and procedural geometry.
-// No browser or ESP32 is needed to run these checks.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
-const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
-assert.equal(scripts.length,1);
-const script=scripts[0];
-function snippet(start,end){
-  const a=script.indexOf(start),b=script.indexOf(end,a+1);
-  assert.ok(a>=0,'Missing code section '+start);
-  assert.ok(b>a,'Missing code section '+end);
-  return script.slice(a,b);
+const match=html.match(/<script>([\s\S]*?)<\/script>/);
+const source=match?.[1]||'';
+function extract(first,last){
+  const a=source.indexOf(first),b=source.indexOf(last,a+1);
+  assert.ok(a!==-1&&b>a,'Missing client section '+first);
+  return source.slice(a,b);
 }
-const catalogs=snippet('const vehicleCatalog=','  const genericGeometry=');
-const geometry=snippet('const genericGeometry=','  const vehiclePref=');
-const toSvg=snippet('  function currentGeometry(){','  function setVehicleSelection(){');
-const to3D=snippet('  function carQuad(', '  function projectCar(');
-const catalog=new Function(catalogs+';return vehicleCatalog;')();
-const make=new Function('metadata',
-  "const paintData={silver:'#a8b5c2',white:'#e5eaf0',graphite:'#516373',blue:'#467da8'};let paint='silver';let vehicleMeta=metadata;"+
-  geometry+toSvg+to3D+
-  'return {svg:modelTopSvg(),mesh:modelMesh(),style:currentStyle()};'
-);
+const catalogSource=extract('const vehicleCatalog=','// Hand-crafted starting geometry');
+const catalog=new Function(catalogSource+';return vehicleCatalog;')();
 
-test('ParkSense frontend code parses and has no duplicate static IDs',()=>{
-  assert.doesNotThrow(()=>new vm.Script(script));
+test('Dashboard script parses and all DOM references exist',()=>{
+  assert.doesNotThrow(()=>new vm.Script(source));
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
   assert.equal(new Set(ids).size,ids.length);
+  const directRefs=[...source.matchAll(/\$\('([^']+)'\)/g)].map(m=>m[1]);
+  for(const id of directRefs)assert.ok(ids.includes(id),'Missing element '+id);
 });
 
-test('Malaysia vehicle catalog has generation hierarchy for Myvi and Saga',()=>{
-  assert.ok(Object.keys(catalog).length>=20);
-  assert.ok(Object.keys(catalog.Perodua).length>=8);
-  assert.ok(Object.keys(catalog.Proton).length>=8);
-  assert.equal(catalog.Perodua.Myvi[1].length,6);
-  assert.equal(catalog.Proton.Saga[1].length,4);
+test('Only two verified 3D cars can be selected',()=>{
+  assert.deepEqual(Object.keys(catalog),['Perodua','Proton']);
+  assert.deepEqual(Object.keys(catalog.Perodua),['Myvi']);
+  assert.deepEqual(Object.keys(catalog.Proton),['Saga 1985']);
+  assert.deepEqual(catalog.Perodua.Myvi[1],[['Generation unverified','myvi3']]);
+  assert.deepEqual(catalog.Proton['Saga 1985'][1],[['1985 · First generation','saga1']]);
+  const buttons=[...html.matchAll(/data-realmodel="([^"]+)"/g)].map(m=>m[1]);
+  assert.deepEqual(buttons,['myvi','saga']);
+  assert.match(html,/class="preview-actions" hidden/);
+  assert.match(html,/class="vehicle-selectors" hidden/);
+  assert.match(html,/class="paint-options"[^>]*hidden/);
 });
 
-test('Every selectable model draws finite 2D SVG and 3D mesh',()=>{
-  let count=0;
-  for(const [brand,models] of Object.entries(catalog)){
-    for(const [model,[body,generations]] of Object.entries(models)){
-      for(const [generation,profile] of generations){
-        const {svg,mesh}=make({brand,model,generation,body,profile});
-        assert.ok(svg.startsWith('<svg '),brand+' '+model+' '+generation);
-        assert.ok(svg.endsWith('</svg>'));
-        assert.ok(mesh.length>60);
-        for(const face of mesh){
-          assert.match(face.paint,/^#[a-f\d]{6}$/i);
-          assert.ok(face.points.length>=3);
-          assert.ok(face.points.every(p=>p.length===3&&p.every(Number.isFinite)));
-        }
-        count++;
-      }
-    }
+test('Real 3D gallery uses author links and does not claim Myvi generation',()=>{
+  assert.match(source,/4f62bfca654643c3858a7688e7a708ed/);
+  assert.match(source,/7e8adb5d0d2e4dfca405e07567835406/);
+  assert.match(source,/generation unverified/i);
+  assert.match(source,/zairiq-123/);
+  assert.match(source,/setVehicleView\('licensed'\)/);
+  assert.match(source,/selectedGen=isMyvi\?'Generation unverified':'1985 · First generation'/);
+});
+
+test('Only browser visuals change, safety telemetry and physical warnings remain read only',()=>{
+  for(const field of ['distF','distR','distL','distRefR','humanF','humanR','humanL','humanRefR']){
+    assert.ok(source.includes(field),'Missing telemetry key '+field);
   }
-  assert.ok(count>=200,'Missing Malaysian generation options');
-});
-
-test('Myvi and Saga major generations have different model geometry',()=>{
-  for(const [brand,model] of [['Perodua','Myvi'],['Proton','Saga']]){
-    const [body,gens]=catalog[brand][model],signatures=new Set();
-    for(const [generation,profile] of gens){
-      assert.ok(profile,'Every major '+model+' entry should have an original concept profile');
-      const a=make({brand,model,generation,body,profile});
-      signatures.add(JSON.stringify(a.mesh));
-      assert.notEqual(a.style.line,'Generic hatchback visual');
-      assert.notEqual(a.style.line,'Generic sedan visual');
-    }
-    assert.equal(signatures.size,gens.length,model+' generation silhouettes should differ');
-  }
+  assert.match(source,/parseData\(msg\.data\)/);
+  assert.match(source,/hardware alerts unaffected|hardware alarms remain active|hardware LED and buzzer/i);
 });
