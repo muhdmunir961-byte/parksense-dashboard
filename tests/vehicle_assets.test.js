@@ -45,7 +45,7 @@ test('One-command setup blocks unverified channels and keeps secrets local',()=>
   assert.match(setup,/cloud_config\.h/);
   assert.match(setup,/getpass\.getpass/);
   assert.match(setup,/parkingdashboard\.my\.id\/api\/device\/telemetry/);
-  assert.match(setup,/Type FLASH/);
+  assert.match(setup,/type FLASH/);
   const gitignore=fs.readFileSync(path.join(root,'.gitignore'),'utf8');
   assert.match(gitignore,/firmware\/esp32-main\/include\/cloud_config\.h/);
 });
