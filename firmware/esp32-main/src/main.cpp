@@ -8,32 +8,27 @@
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
 // ============================================================================
-// PARKSENSE — ONE-FILE ESP32 SETUP (EDIT HERE ON YOUR LAPTOP, NOT ON GITHUB)
+// PARKSENSE / MAIN ESP32 — ISI 3 MAKLUMAT DI SINI SAHAJA
 // ============================================================================
-// You only need to edit THIS main.cpp file. Everything else comes with the
-// existing PlatformIO project. Do not upload this file back to a public GitHub
-// repo after entering Wi-Fi passwords or your private Coolify device token.
+// 1. Pastikan hotspot / router 2.4 GHz betul-betul guna Wi-Fi CHANNEL 1.
+// 2. Di laptop sendiri, GANTI tulisan ISI_... dalam 3 baris di bawah.
+// 3. Simpan dan upload MAIN ESP32 melalui PlatformIO. Tiada fail lain diedit.
+// Jangan push semula main.cpp yang sudah mengandungi password / token ke GitHub.
 //
-// BEFORE turning cloud ON: verify router/hotspot uses 2.4 GHz CHANNEL 1.
-// All four ESP-NOW sensor pods use channel 1; other channels can break them.
-//
-// Step 1: Change false -> true ONLY after verifying channel 1.
-// Step 2: Enter your real Wi-Fi SSID, Wi-Fi password and Coolify DEVICE_TOKEN.
-// Step 3: Save main.cpp, connect MAIN ESP32 by USB, then PlatformIO Upload.
-//
-// If you already made include/cloud_config.h using the old setup wizard, it
-// takes priority. Otherwise this self-contained block is all you edit.
-#if __has_include("cloud_config.h")
-#include "cloud_config.h"
-#else
-#define CLOUD_UPLINK_ENABLED false
-#define CLOUD_WIFI_SSID "PUT_YOUR_2_4_GHZ_CH1_WIFI_NAME_HERE"
-#define CLOUD_WIFI_PASSWORD "PUT_YOUR_WIFI_PASSWORD_HERE"
-#define CLOUD_DEVICE_TOKEN "PUT_YOUR_COOLIFY_DEVICE_TOKEN_HERE"
+// Cloud sentiasa disediakan, tetapi TIDAK akan cuba connect selagi maklumat
+// masih kosong / placeholder. LED, buzzer dan empat pod kekal berfungsi lokal.
+#define CLOUD_UPLINK_ENABLED true
+#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"
+#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"
+#define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"
 #define CLOUD_API_URL "https://parkingdashboard.my.id/api/device/telemetry"
-#define PARKSENSE_AP_PASSWORD "123456789" // Optional: change to a NEW 8+ character password
-#endif
 
+// Pilihan tambahan: ubah password Wi-Fi lokal "Monitor Dashboard" kalau mahu.
+// Password lama dikekalkan untuk keserasian; sebaiknya tukar ke 8+ aksara unik.
+#define PARKSENSE_AP_PASSWORD "123456789"
+
+
+#include <cstring>
 #if CLOUD_UPLINK_ENABLED
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -82,6 +77,23 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 #define PARKSENSE_AP_PASSWORD "123456789"
 #endif
 
+
+#if CLOUD_UPLINK_ENABLED
+// Prevent accidental connection using example credentials or a too-short token.
+// This validation never logs or transmits passwords or tokens.
+bool cloudCredentialsValid() {
+  const size_t ssidLen = strlen(CLOUD_WIFI_SSID);
+  const size_t passLen = strlen(CLOUD_WIFI_PASSWORD);
+  const size_t tokenLen = strlen(CLOUD_DEVICE_TOKEN);
+  return ssidLen >= 1 && ssidLen <= 32 &&
+         passLen >= 8 && passLen <= 63 &&
+         tokenLen >= 24 &&
+         strncmp(CLOUD_WIFI_SSID, "ISI_", 4) != 0 &&
+         strncmp(CLOUD_WIFI_PASSWORD, "ISI_", 4) != 0 &&
+         strncmp(CLOUD_DEVICE_TOKEN, "ISI_", 4) != 0 &&
+         strcmp(CLOUD_WIFI_PASSWORD, CLOUD_DEVICE_TOKEN) != 0;
+}
+#endif
 
 // IMPORTANT: Matches the latest user-supplied main.cpp wiring.
 // Active-HIGH LEDs and buzzer via a suitable transistor/driver.
@@ -620,7 +632,8 @@ void setup() {
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 #if CLOUD_UPLINK_ENABLED
   WiFi.setAutoReconnect(false); // Only the low-priority uplink task retries, channel 1.
-  Serial.println("[Cloud] Enabled. Wi-Fi association restricted to channel 1.");
+  if (cloudCredentialsValid()) Serial.println("[Cloud] Config ready. Wi-Fi restricted to channel 1.");
+  else Serial.println("[Cloud] OFFLINE: fill 3 settings at top of main.cpp; local alerts still work.");
 #endif
   if(esp_now_init()!=ESP_OK){Serial.println("ESP-NOW Init Failed");return;}
   esp_now_register_recv_cb(OnDataRecv);
@@ -631,9 +644,12 @@ void setup() {
   Serial.println("Encoder: speed limit 5-100; encoder press resets to 15 km/h");
   Serial.println("GPIO14 switch: GND=parking alerts ON; OPEN=all alert outputs OFF");
 #if CLOUD_UPLINK_ENABLED
-  // Launch after ESP-NOW has initialized. Hotspot may appear later; no restart required.
-  BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",12288,nullptr,1,nullptr,0);
-  if(ok!=pdPASS) Serial.println("[Cloud] Background task could not start");
+  // Start only after all 3 local config fields have been filled. No Wi-Fi
+  // association attempts while example credentials are in this file.
+  if (cloudCredentialsValid()) {
+    BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",12288,nullptr,1,nullptr,0);
+    if(ok!=pdPASS) Serial.println("[Cloud] Background task could not start");
+  }
 #endif
 }
 
