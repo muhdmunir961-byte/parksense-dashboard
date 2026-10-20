@@ -39,7 +39,13 @@ test('Security policy restricts external 3D frames and remote control uses verif
 });
 
 test('ESP32 remote setting applies only warning threshold with 5-100 km/h validation',()=>{
-  assert.match(firmware,/#if __has_include\("cloud_config\.h"\)/);
+  assert.match(firmware,/#define CLOUD_UPLINK_ENABLED true/);
+  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"/);
+  assert.match(firmware,/#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"/);
+  assert.match(firmware,/#define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"/);
+  assert.match(firmware,/bool cloudCredentialsValid\(\)/);
+  assert.match(firmware,/if \(cloudCredentialsValid\(\)\)/);
+  assert.doesNotMatch(firmware,/#include "cloud_config\.h"/);
   assert.match(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 1\)/);
   assert.match(firmware,/doc\["cloudControl"\] = 1/);
   assert.match(firmware,/strcmp\(type,"set_speed_limit"\)==0/);
