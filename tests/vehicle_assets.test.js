@@ -57,11 +57,16 @@ test('ESP32 remote setting applies only warning threshold with 5-100 km/h valida
   assert.doesNotMatch(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD\);/);
 });
 
-test('Setup is secret-safe and requires verified CH1 and confirmation before flash',()=>{
-  assert.match(setup,/Type CH1/);
-  assert.match(setup,/cloud_config\.h/);
-  assert.match(setup,/getpass\.getpass/);
-  assert.match(setup,/parkingdashboard\.my\.id\/api\/device\/telemetry/);
-  assert.match(setup,/type FLASH/);
-  assert.match(fs.readFileSync(path.join(root,'.gitignore'),'utf8'),/firmware\/esp32-main\/include\/cloud_config\.h/);
+test('One-file ESP32 configuration is safe and the old wizard never writes unused secrets',()=>{
+  assert.match(firmware,/#define CLOUD_UPLINK_ENABLED true/);
+  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"/);
+  assert.match(firmware,/#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"/);
+  assert.match(firmware,/#define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"/);
+  assert.match(firmware,/bool cloudCredentialsValid\(\)/);
+  assert.match(firmware,/if \(cloudCredentialsValid\(\)\)/);
+  assert.match(firmware,/PARKSENSE_AP_PASSWORD/);
+  assert.match(firmware,/https:\/\/parkingdashboard\.my\.id\/api\/device\/telemetry/);
+  assert.match(setup,/No files were changed/);
+  assert.doesNotMatch(setup,/write_text\(/);
+  assert.doesNotMatch(firmware,/#include "cloud_config\.h"/);
 });
