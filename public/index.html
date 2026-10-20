@@ -780,34 +780,102 @@ body.warning-open{overflow:hidden}
     const e=[x0,y1,z0],g=[x1,y1,z0],h=[x1,y1,z1],i=[x0,y1,z1];
     [[a,b,c,d],[e,g,h,i],[a,b,g,e],[d,c,h,i],[a,d,i,e],[b,c,h,g]].forEach(p=>carQuad(f,p,paint));
   }
+
   function modelMesh(){
-    const v=currentGeometry(),width=Math.max(1.55,v[0]/49),length=Math.min(5.1,v[1]*2.85);
-    const type=vehicleMeta?vehicleMeta.body:'hatch';
-    const front=length/2,rear=-length/2,bodyY=.91,bodyX=width/2;
-    const cabinFront=front-(type==='mpv'?.19:type==='suv'?.24:.29)*length;
-    const cabinRear=rear+(type==='hatch'?.12:type==='mpv'?.12:.25)*length;
-    const rf=cabinFront-.20,rr=cabinRear+.12,roofY=(type==='suv'||type==='mpv')?1.67:type==='pickup'?1.47:1.43;
-    const roofX=width*.37,color=paintData[paint],glass='#536f82',f=[];
-    carBox(f,-bodyX,bodyX,.33,bodyY,rear,front,color);
-    carQuad(f,[[-roofX,roofY,rr],[roofX,roofY,rr],[roofX,roofY,rf],[-roofX,roofY,rf]],color);
-    carQuad(f,[[-bodyX*.83,bodyY,cabinFront],[bodyX*.83,bodyY,cabinFront],[roofX,roofY,rf],[-roofX,roofY,rf]],glass);
-    carQuad(f,[[-roofX,roofY,rr],[roofX,roofY,rr],[bodyX*.83,bodyY,cabinRear],[-bodyX*.83,bodyY,cabinRear]],glass);
-    carQuad(f,[[-bodyX*.83,bodyY,cabinRear],[-roofX,roofY,rr],[-roofX,roofY,rf],[-bodyX*.83,bodyY,cabinFront]],color);
-    carQuad(f,[[bodyX*.83,bodyY,cabinFront],[roofX,roofY,rf],[roofX,roofY,rr],[bodyX*.83,bodyY,cabinRear]],color);
-    // Window glazing on cabin sides; wheels are visible in every orbit direction.
-    carQuad(f,[[-bodyX*.835,bodyY+.03,cabinFront-.12],[-roofX-.003,roofY-.06,rf-.06],[-roofX-.003,roofY-.06,rr+.06],[-bodyX*.835,bodyY+.03,cabinRear+.12]],glass);
-    carQuad(f,[[bodyX*.835,bodyY+.03,cabinRear+.12],[roofX+.003,roofY-.06,rr+.06],[roofX+.003,roofY-.06,rf-.06],[bodyX*.835,bodyY+.03,cabinFront-.12]],glass);
-    [-1,1].forEach(side=>[-1,1].forEach(end=>{
-      const x=side*(bodyX+.06),z=end*length*.335;
-      carBox(f,x-.20,x+.20,.10,.67,z-.40,z+.40,'#28343f');
-    }));
-    [-1,1].forEach(side=>{
-      const x=side*width*.31;
-      carBox(f,x-.15,x+.15,.71,.82,front-.025,front+.045,'#e5efed');
-      carBox(f,x-.15,x+.15,.69,.79,rear-.045,rear+.025,'#ba554b');
-    });
-    if(type==='pickup'){
-      carBox(f,-bodyX*.93,bodyX*.93,bodyY,bodyY+.05,rear+length*.05,rear+length*.30,'#485c68');
+    const [rawWidth,factor]=currentGeometry(),style=currentStyle(),kind=vehicleMeta?.body||'hatch';
+    const width=Math.max(1.60,rawWidth/49),half=width/2,length=Math.min(5.1,factor*2.85);
+    const front=length/2,rear=-length/2;
+    const paintColor=paintData[paint],glass='#536f82';
+    const f=[];
+    const stations=[
+      {z:rear,half:half*style.tail*.78,y:.81},
+      {z:rear+length*.065,half:half*style.tail,y:.90},
+      {z:rear+length*.25,half:half,y:.92},
+      {z:front-length*.25,half:half,y:.93},
+      {z:front-length*.088,half:half*style.nose,y:.87},
+      {z:front,half:half*style.nose*.76,y:.79}
+    ];
+    for(let i=0;i<stations.length-1;i++){
+      const a=stations[i],b=stations[i+1];
+      const x=a.half,t=b.half;
+      carQuad(f,[[-x,a.y,a.z],[x,a.y,a.z],[t,b.y,b.z],[-t,b.y,b.z]],paintColor);
+      carQuad(f,[[-x,.30,a.z],[-x,a.y,a.z],[-t,b.y,b.z],[-t,.30,b.z]],paintColor);
+      carQuad(f,[[x,a.y,a.z],[x,.30,a.z],[t,.30,b.z],[t,b.y,b.z]],paintColor);
+      carQuad(f,[[-x,.30,a.z],[x,.30,a.z],[t,.30,b.z],[-t,.30,b.z]],'#334752');
+    }
+    carQuad(f,[[-stations[0].half,.30,rear],[-stations[0].half,stations[0].y,rear],[stations[0].half,stations[0].y,rear],[stations[0].half,.30,rear]],paintColor);
+    const n=stations[stations.length-1];
+    carQuad(f,[[-n.half,.30,front],[n.half,.30,front],[n.half,n.y,front],[-n.half,n.y,front]],paintColor);
+    // Cabin is high and rounded for Myvi Gen1, lower and more swept for Gen3.
+    // Saga retains a separate long boot; the 2025 concept has a signature rear bar.
+    const windZ=front-length*style.hood,bootZ=rear+length*style.deck;
+    const roofF=windZ-.16,roofR=bootZ+.15,roofY=style.cabin+.22,roofX=half*style.roof;
+    const roofLF=roofX*(1-.035*style.round),roofLR=roofX*(1-.055*style.round);
+    carQuad(f,[[-roofLR,roofY,roofR],[roofLR,roofY,roofR],[roofLF,roofY,roofF],[-roofLF,roofY,roofF]],paintColor);
+    carQuad(f,[[-half*.82,.93,windZ],[half*.82,.93,windZ],[roofLF,roofY,roofF],[-roofLF,roofY,roofF]],glass);
+    carQuad(f,[[-roofLR,roofY,roofR],[roofLR,roofY,roofR],[half*.81,.92,bootZ],[-half*.81,.92,bootZ]],glass);
+    // Semi-transparent glass impression and dividing B pillar.
+    for(const side of [-1,1]){
+      const x=half*.82*side,r=roofX*side;
+      const sweep=[
+        [x,.93,windZ],[r,roofY,roofF],[r,roofY,roofR],[x,.92,bootZ]
+      ];
+      if(side<0)sweep.reverse();
+      carQuad(f,sweep,paintColor);
+      carQuad(f,[[x*1.002,.947,windZ-.085],[r*1.008,roofY-.065,roofF-.05],[r*1.008,roofY-.065,roofR+.05],[x*1.002,.947,bootZ+.075]],glass);
+      const mid=(roofF+roofR)/2;
+      const pillarX=r*1.009;
+      carQuad(f,[[pillarX,roofY-.07,mid+.035],[pillarX,roofY-.07,mid-.035],[x*1.005,.95,mid-.035],[x*1.005,.95,mid+.035]],'#324b5b');
+      // Side mirrors: generation differences in position.
+      carBox(f,side*(half+.04)-.095,side*(half+.04)+.095,.90,1.02,windZ-.14,windZ+.02,'#4d6373');
+    }
+    // Black tyres, simple alloy faces and wheel-arch detail.
+    for(const side of [-1,1])for(const axle of [-1,1]){
+      const z=axle*length*.345,x=side*(half+.065);
+      carBox(f,x-.17,x+.17,.10,.66,z-.34,z+.34,'#27343d');
+      const o=x+side*.176;
+      carQuad(f,[[o,.21,z-.19],[o,.54,z-.19],[o,.54,z+.19],[o,.21,z+.19]],'#9daeb9');
+      carQuad(f,[[o+side*.003,.30,z-.08],[o+side*.003,.46,z-.08],[o+side*.003,.46,z+.08],[o+side*.003,.30,z+.08]],'#596e7b');
+    }
+    // Bonnet seams and grill differentiate front treatment.
+    const hoodRear=windZ+.08,hoodFront=front-length*.10;
+    carQuad(f,[[-half*.38,.942,hoodRear],[half*.38,.942,hoodRear],[half*.31,.94,hoodFront],[-half*.31,.94,hoodFront]],paintColor);
+    const lip=front+.009,gwide=style.grille==='small'?.42:style.grille==='double'?.74:.65;
+    carQuad(f,[[-half*gwide,.48,lip],[-half*gwide,.68,lip],[half*gwide,.68,lip],[half*gwide,.48,lip]],'#2e424f');
+    if(style.grille==='mesh'||style.grille==='double'){
+      carQuad(f,[[-half*.70,.36,lip+.007],[-half*.70,.445,lip+.007],[half*.70,.445,lip+.007],[half*.70,.36,lip+.007]],'#354956');
+      if(style.grille==='mesh'){
+        [-.43,-.14,.14,.43].forEach(a=>{
+          carQuad(f,[[a*half,.49,lip+.014],[(a+.055)*half,.49,lip+.014],[(a+.055)*half,.67,lip+.014],[a*half,.67,lip+.014]],'#617987');
+        });
+      }
+    }
+    // Lamp shape has distinct round/square/swept/blade patterns.
+    const lampY=.91, lampZ=front-length*(style.head==='round'?.125:style.head==='blade'?.104:.095);
+    for(const side of [-1,1]){
+      const cx=half*side*.70,span=style.head==='round'?.20:style.head==='square'?.26:.32;
+      const zlong=style.head==='round'?.12:style.head==='blade'?.067:.086;
+      const x0=cx-span*.5,x1=cx+span*.5;
+      const z0=lampZ-zlong*.5,z1=lampZ+zlong*.5;
+      carQuad(f,[[x0,lampY,z0],[x1,lampY,z0],[x1,lampY,z1],[x0,lampY,z1]],'#f2eee0');
+      if(style.head==='blade'){
+        carQuad(f,[[x0-.02,lampY+.008,z1+.01],[x1+.02,lampY+.008,z1+.01],[x1+.02,lampY+.008,z1+.022],[x0-.02,lampY+.008,z1+.022]],'#cee6eb');
+      }
+    }
+    // Rear fascia and distinctive rear light treatment.
+    const backZ=rear-.012;
+    if(style.rearLamp==='bar'){
+      carQuad(f,[[-half*.78,.75,backZ],[-half*.78,.825,backZ],[half*.78,.825,backZ],[half*.78,.75,backZ]],'#c2544a');
+    }else{
+      for(const side of [-1,1]){
+        const x=side*half*.70,w=style.rearLamp==='tower'?.16:.26;
+        carQuad(f,[[x-w/2,.61,backZ],[x-w/2,.82,backZ],[x+w/2,.82,backZ],[x+w/2,.61,backZ]],'#bb514b');
+      }
+    }
+    if(kind==='pickup'){
+      const deckRear=rear+length*.07,deckFront=rear+length*.29;
+      carQuad(f,[[-half*.89,.944,deckRear],[half*.89,.944,deckRear],[half*.89,.944,deckFront],[-half*.89,.944,deckFront]],'#506472');
+      for(const sign of [-1,1])carBox(f,sign*half*.73-.035,sign*half*.73+.035,.945,1.005,deckRear,deckFront,paintColor);
     }
     return f;
   }
