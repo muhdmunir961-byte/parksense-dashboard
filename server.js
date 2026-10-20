@@ -19,7 +19,29 @@ let lastTelemetry = null;
 let lastSeenAt = 0;
 let lastOnlineState = false;
 const ONLINE_WINDOW_MS = 5000;
+const COMMAND_TTL_MS = 12000; // In-memory, not persistent. Never apply stale instructions.
 const loginAttempts = new Map();
+let pendingLimitCommand = null;
+let lastLimitCommandTime = 0;
+function announceCommand(state, command, message='') {
+  broadcast({type:'speed_limit_command',state,id:command?.id||null,value:command?.value||null,message});
+}
+function expireCommand() {
+  if (pendingLimitCommand && (Date.now()>pendingLimitCommand.expiresAt || !isOnline())) {
+    const old = pendingLimitCommand;
+    pendingLimitCommand = null;
+    announceCommand('failed',old,'ESP32 did not acknowledge within the allowed time or disconnected.');
+  }
+}
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (typeof origin !== 'string') return false; // Browser-only control, blocks simple CSRF.
+  try {
+    const u=new URL(origin);
+    return (u.protocol==='https:'||u.protocol==='http:') && u.host===req.headers.host
+      && u.protocol===(secureCookie(req)?'https:':'http:');
+  }catch{return false;}
+}
 
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a)), bb = Buffer.from(String(b));
@@ -75,7 +97,11 @@ function normalise(data){
   }
   if (typeof data.systemEnabled !== 'boolean') return null;
   result.systemEnabled = data.systemEnabled;
-  result.remoteControl = false; // read-only: speed limit set on ESP32 rotary encoder
+  // Command capability must be explicitly advertised by updated ESP32 firmware.
+  result.remoteControl = data.cloudControl === 1;
+  if (typeof data.commandApplied === 'string' && /^[a-f0-9]{16}$/.test(data.commandApplied)) {
+    result.commandApplied = data.commandApplied;
+  }
   return result;
 }
 function secureCookie(req){return req.socket.encrypted || req.headers['x-forwarded-proto']==='https';}
@@ -112,8 +138,42 @@ const server=http.createServer(async(req,res)=>{
       const wasOnline=isOnline();
       lastTelemetry=payload;lastSeenAt=Date.now();
       if(!wasOnline)broadcast({type:'status',deviceOnline:true});
+      expireCommand();
+      // Acknowledgement is explicit: match command ID *and* the new physical limit.
+      if(pendingLimitCommand && payload.commandApplied===pendingLimitCommand.id
+         && payload.speedLimit===pendingLimitCommand.value) {
+        const confirmed=pendingLimitCommand;
+        pendingLimitCommand=null;
+        announceCommand('applied',confirmed,'ESP32 confirmed the new alert threshold.');
+      }
       broadcast({type:'telemetry',data:payload});
-      return json(res,200,{ok:true,command:null});
+      // ESP32 polls naturally with telemetry HTTPS uploads; NO inbound device port required.
+      const pending=pendingLimitCommand && payload.remoteControl && isOnline()
+        ?{type:'set_speed_limit',id:pendingLimitCommand.id,value:pendingLimitCommand.value}
+        :null;
+      return json(res,200,{ok:true,command:pending});
+    }
+    if(req.method==='POST' && route==='/api/control/speed-limit'){
+      if(!authenticated(req))return json(res,401,{error:'Login required'});
+      if(!sameOrigin(req))return json(res,403,{error:'Same-origin request required'});
+      if(!String(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))
+        return json(res,415,{error:'JSON body required'});
+      expireCommand();
+      if(!isOnline()||lastTelemetry.remoteControl!==true)
+        return json(res,409,{error:'ESP32 not online or firmware does not support dashboard threshold controls'});
+      if(pendingLimitCommand)
+        return json(res,409,{error:'Previous threshold setting awaits ESP32 confirmation'});
+      const value=JSON.parse(await body(req,256))?.value;
+      if(typeof value!=='number'||!Number.isInteger(value)||value<5||value>100)
+        return json(res,422,{error:'Alert threshold must be a whole number from 5 to 100 km/h'});
+      // Keep HTTP command endpoint rate-limited; no high-frequency network flood.
+      if(Date.now()-lastLimitCommandTime<300)
+        return json(res,429,{error:'Please wait before changing the threshold again'});
+      lastLimitCommandTime=Date.now();
+      const command={id:crypto.randomBytes(8).toString('hex'),value,expiresAt:Date.now()+COMMAND_TTL_MS};
+      pendingLimitCommand=command;
+      announceCommand('pending',command,'Waiting for ESP32 to acknowledge setting');
+      return json(res,202,{ok:true,state:'pending',commandId:command.id,value});
     }
     if(req.method==='GET' && route==='/api/device/status'){
       if(!authenticated(req))return json(res,401,{error:'Login required'});
@@ -148,15 +208,16 @@ wss.on('connection',ws=>{
   clients.add(ws);ws.isAlive=true;
   ws.on('pong',()=>{ws.isAlive=true});
   ws.send(JSON.stringify({type:'status',deviceOnline:isOnline()}));
+  expireCommand();
+  if(pendingLimitCommand)ws.send(JSON.stringify({type:'speed_limit_command',state:'pending',id:pendingLimitCommand.id,value:pendingLimitCommand.value,message:'Waiting for ESP32 acknowledgement'}));
   if(isOnline())ws.send(JSON.stringify({type:'telemetry',data:lastTelemetry}));
-  // Read-only dashboard: WebSocket commands cannot change alert thresholds.
-  ws.on('message',()=>{
-    ws.send(JSON.stringify({type:'error',message:'Read-only monitoring. Set the limit using the ESP32 rotary encoder.'}));
-  });
+  // WebSocket remains read-only; all changes use authenticated, same-origin HTTP POST.
+  ws.on('message',()=>ws.send(JSON.stringify({type:'error',message:'Use the dashboard threshold controls; direct WebSocket commands are disabled.'})));
   ws.on('close',()=>clients.delete(ws));
 });
 const interval=setInterval(()=>{
   const online=isOnline();
+  expireCommand();
   if(lastOnlineState!==online){lastOnlineState=online;broadcast({type:'status',deviceOnline:online});}
   for(const ws of clients){if(!ws.isAlive){ws.terminate();continue;}ws.isAlive=false;ws.ping();}
   // Prevent unbounded login attempt records.
