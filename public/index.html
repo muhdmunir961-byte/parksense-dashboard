@@ -104,7 +104,7 @@ body{background:var(--bg);color:var(--text);font-size:14px}
 .safety-ribbon .sr-title{font-size:18px;font-weight:750;letter-spacing:-.5px;line-height:1.25}
 .safety-ribbon .sr-copy{font-size:12px;color:#78838e;margin-top:4px;max-width:740px}
 .safety-ribbon .sr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:end}
-.hmi-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:10px 14px;font:700 12px/1.2 inherit;border:1px solid #d7e0e8;border-radius:8px;background:#fff;color:#304759;cursor:pointer;white-space:nowrap}
+.hmi-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:10px 14px;font:700 12px/1.2 Inter,system-ui,sans-serif;border:1px solid #d7e0e8;border-radius:8px;background:#fff;color:#304759;cursor:pointer;white-space:nowrap}
 .hmi-btn:hover{background:#eaf1f8}.hmi-btn:focus-visible{outline:3px solid #9fc5e6;outline-offset:2px}
 .hmi-btn.blue{background:#306da7;border-color:#306da7;color:#fff}.hmi-btn.blue:hover{background:#245f96}
 .hmi-btn.urgent{background:#ad4038;border-color:#ad4038;color:#fff}.hmi-btn.urgent:hover{background:#92342c}
@@ -453,7 +453,8 @@ body.warning-open{overflow:hidden}
     });
     $('activePods').textContent=active+' / 4 PODS';
     let headline='Normal operation',message='Vehicle speed and detected distances are within the monitored thresholds.',tone='',symbol='✓';
-    if(mode==='live' && telemetry.systemEnabled!==true){headline='Parking mode OFF';message='GPIO14 switch is OFF: all physical LED and buzzer outputs are disabled. Live sensor monitoring continues.';tone='warn';symbol='!';}
+    if(mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED'){headline='Waiting for ESP32 telemetry';message='Cloud dashboard is online, but the controller is offline. Connect the ESP32 to Wi-Fi to receive live alerts.';tone='warn';symbol='!';}
+    else if(mode==='live' && telemetry.systemEnabled!==true){headline='Parking mode OFF';message='GPIO14 switch is OFF: all physical LED and buzzer outputs are disabled. Live sensor monitoring continues.';tone='warn';symbol='!';}
     else if(active===0){headline='No sensor signal';message='No ESP-NOW pod data is available. Check sensor power and communications.';tone='warn';symbol='!';}
     else if(min<15){headline='Immediate obstacle alert';message='A sensor detects an object under 15 cm. Solid red LED and continuous buzzer.';tone='danger';symbol='!';}
     else if(speed>limit){headline='Speed limit exceeded';message='Vehicle speed is above the '+limit+' km/h warning threshold.';tone='danger';symbol='!';}
