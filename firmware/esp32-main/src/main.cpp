@@ -39,7 +39,7 @@
 #include <HTTPClient.h>
 #include <time.h>
 // HTTPS TLS trust anchor is embedded in main.cpp to simplify one-file setup.
-// Keep certificate validation ENABLED; never call setInsecure().
+// Keep certificate validation ENABLED; never disable certificate verification.
 // Different Cloudflare certificates may require updating this root certificate.
 // Public Let's Encrypt ISRG Root X1 trust anchor. Uses TLS certificate validation.
 // If your domain uses another issuer, supply the matching trusted CA instead.
