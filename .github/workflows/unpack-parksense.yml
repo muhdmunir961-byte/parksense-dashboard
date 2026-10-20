@@ -1,0 +1,43 @@
+name: Unpack ParkSense source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/unpack-parksense.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Extract the uploaded project ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          zipfile="ParkSense_Coolify_eMAS_Style.zip"
+          test -f "$zipfile"
+          mkdir -p "$RUNNER_TEMP/parksense-unpacked"
+          unzip -q "$zipfile" -d "$RUNNER_TEMP/parksense-unpacked"
+          test -f "$RUNNER_TEMP/parksense-unpacked/ParkSense-eMAS-Style/Dockerfile"
+          test -f "$RUNNER_TEMP/parksense-unpacked/ParkSense-eMAS-Style/public/index.html"
+          cp -a "$RUNNER_TEMP/parksense-unpacked/ParkSense-eMAS-Style/." .
+          test -f public/index.html
+          test -f firmware/esp32-main/src/main.cpp
+          test -f firmware/esp32-sensor/src/main.cpp
+      - name: Commit extracted source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract ParkSense e.MAS project source for Coolify"
+            git push
+          fi
