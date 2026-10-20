@@ -16,6 +16,11 @@ Use this sheet after flashing the **main ESP32**. Do not test the prototype by d
 - [ ] **Under 15 cm**: solid RED + continuous warning beep.
 - [ ] Trigger PIR and confirm the correct distinctive warning sequence.
 - [ ] Encoder changes speed-alert threshold (5–100 km/h); push returns threshold to 15.
+- [ ] With cloud running and ESP32 online: Dashboard **Parking Assist** → enter `25` km/h → Apply; UI first shows **PENDING** and only then **ESP32 CONFIRMED** after the ESP32 updates its local `speedLimit`.
+- [ ] Repeat using dashboard `+`, `−`, and reset `↺` (15 km/h), then rotate hardware encoder; confirm both input methods change the *same* warning threshold.
+- [ ] Unplug/turn off ESP32 or disable hotspot; dashboard must reject a new limit (not falsely say "applied"). Pending commands expire after 12 seconds.
+- [ ] Verify the web limit controls do not actuate throttle/brakes, cannot silence the physical buzzer/LEDs, and do not change distance/PIR warning thresholds.
+
 - [ ] GPIO14 switch OFF disables physical alert outputs.
 - [ ] Unplug one pod: dashboard marks only that pod OFFLINE and hardware should not claim a false clear state.
 - [ ] GPS signal loss: recent-fix missing should be represented as no reliable speed; reported speed zero is **not** proof of physical stopped vehicle.
