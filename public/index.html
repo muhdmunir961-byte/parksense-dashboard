@@ -565,7 +565,7 @@ body.warning-open{overflow:hidden}
       'Kelisa':['hatch',[['2001–2007','']]],'Viva':['hatch',[['2007–2014','']]],
       'Kenari':['mpv',[['2000–2009','']]]},
     'Proton':{
-      'Saga':['sedan',[['Gen 1 · 1985–2008',''],['Gen 2 · 2008–2016',''],['Gen 3 · 2016–2025','saga3'],['New generation · 2025+','saga4']]],
+      'Saga':['sedan',[['Gen 1 · 1985–2008','saga1'],['Gen 2 · 2008–2016','saga2'],['Gen 3 · 2016–2025','saga3'],['New generation · 2025+','saga4']]],
       'Persona':['sedan',[['1993–2007',''],['2007–2016',''],['2016+','persona']]],
       'Iriz':['hatch',[['2014–2020',''],['Facelift · 2021+','']]],
       'S70':['sedan',[['2023–2025',''],['2026+','']]],
@@ -677,11 +677,35 @@ body.warning-open{overflow:hidden}
     myvi1:[89,1.22,.36,.52,1.12],myvi2:[92,1.28,.37,.52,1.14],
     myvi3:[96,1.34,.41,.55,1.14],myvi3f:[97,1.36,.42,.55,1.15],
     axia1:[84,1.17,.36,.48,1.07],axia2:[91,1.24,.40,.50,1.09],
-    bezza:[90,1.70,.38,.50,.99],saga3:[91,1.67,.39,.53,.99],
+    bezza:[90,1.70,.38,.50,.99],saga1:[87,1.55,.37,.48,.92],
+    saga2:[90,1.61,.39,.52,.97],saga3:[91,1.67,.39,.53,.99],
     saga4:[94,1.71,.40,.55,1.01],persona:[96,1.76,.40,.55,1.01],
     x50:[106,1.78,.46,.62,1.38],city:[94,1.80,.39,.55,.95],
     vios:[92,1.74,.40,.53,.99]
   };
+
+  // Shape personality descriptors refer to original low-poly interpretations,
+  // not reverse-engineered vehicle dimensions or OEM licensed geometry.
+  const lowPolyStyles={
+    myvi1:{nose:.88,tail:.92,hood:.19,deck:.115,cabin:1.27,roof:.81,round:.82,head:'round',rearLamp:'tower',grille:'small',line:'First-gen tall roof / rounded nose'},
+    myvi2:{nose:.84,tail:.89,hood:.225,deck:.112,cabin:1.23,roof:.80,round:.59,head:'swept',rearLamp:'tower',grille:'small',line:'Second-gen compact / swept lamps'},
+    myvi3:{nose:.77,tail:.86,hood:.255,deck:.108,cabin:1.20,roof:.77,round:.32,head:'blade',rearLamp:'wrap',grille:'wide',line:'Third-gen wider / angular front'},
+    myvi3f:{nose:.76,tail:.85,hood:.26,deck:.11,cabin:1.21,roof:.77,round:.24,head:'blade',rearLamp:'wrap',grille:'double',line:'Facelift angular lamps / deep fascia'},
+    saga1:{nose:.86,tail:.92,hood:.32,deck:.275,cabin:1.04,roof:.72,round:.08,head:'square',rearLamp:'square',grille:'small',line:'Original boxy three-box sedan'},
+    saga2:{nose:.84,tail:.91,hood:.305,deck:.245,cabin:1.08,roof:.75,round:.50,head:'swept',rearLamp:'wide',grille:'small',line:'Second-gen rounded three-box body'},
+    saga3:{nose:.79,tail:.87,hood:.315,deck:.275,cabin:1.05,roof:.73,round:.41,head:'blade',rearLamp:'wide',grille:'wide',line:'Third-gen swept headlights / sedan deck'},
+    saga4:{nose:.77,tail:.87,hood:.30,deck:.265,cabin:1.08,roof:.75,round:.22,head:'blade',rearLamp:'bar',grille:'mesh',line:'New-gen front grille / rear light bar'}
+  };
+  function currentStyle(){
+    const type=vehicleMeta?.body||'hatch';
+    if(lowPolyStyles[vehicleMeta?.profile])return lowPolyStyles[vehicleMeta.profile];
+    if(type==='sedan')return {nose:.81,tail:.88,hood:.31,deck:.27,cabin:1.08,roof:.75,round:.38,head:'swept',rearLamp:'wide',grille:'small',line:'Generic sedan visual'};
+    if(type==='mpv')return {nose:.90,tail:.90,hood:.17,deck:.13,cabin:1.33,roof:.83,round:.35,head:'wide',rearLamp:'tower',grille:'small',line:'Generic MPV visual'};
+    if(type==='pickup')return {nose:.85,tail:.97,hood:.30,deck:.41,cabin:1.08,roof:.75,round:.16,head:'square',rearLamp:'tower',grille:'wide',line:'Generic pickup visual'};
+    if(type==='suv')return {nose:.82,tail:.88,hood:.27,deck:.22,cabin:1.36,roof:.79,round:.26,head:'blade',rearLamp:'wrap',grille:'wide',line:'Generic SUV visual'};
+    if(type==='coupe')return {nose:.76,tail:.79,hood:.35,deck:.23,cabin:1.01,roof:.69,round:.31,head:'blade',rearLamp:'wide',grille:'wide',line:'Generic coupe visual'};
+    return {nose:.85,tail:.92,hood:.22,deck:.12,cabin:1.24,roof:.79,round:.48,head:'swept',rearLamp:'tower',grille:'small',line:'Generic hatchback visual'};
+  }
   const vehiclePref=(k,def)=>{try{return localStorage.getItem(k)||def}catch{return def}};
   let selectedBrand=vehiclePref('ps-brand','Perodua');
   let selectedModel=vehiclePref('ps-model','Myvi');
@@ -695,22 +719,35 @@ body.warning-open{overflow:hidden}
   function currentGeometry(){
     return specialGeometry[vehicleMeta?.profile]||genericGeometry[vehicleMeta?.body]||genericGeometry.sedan;
   }
+
   function modelTopSvg(){
-    const [width,factor]=currentGeometry(),type=vehicleMeta?.body||'hatch';
-    const len=Math.min(302,factor*178),top=170-len/2,bottom=170+len/2;
-    const left=90-width*.54,right=90+width*.54;
-    const windshield=top+len*(type==='mpv'?.17:type==='suv'?.23:.28);
-    const back=bottom-len*(type==='hatch'?.12:type==='mpv'?.17:.23);
-    const L=left+12,R=right-12,glass='#496879',color=paintData[paint];
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 340" aria-label="Approximate top view of '+vehicleMeta.model+'" role="img">'+
-    '<rect x="'+(left-10)+'" y="'+(top+36)+'" width="15" height="47" rx="5" fill="#293a45"/><rect x="'+(right-5)+'" y="'+(top+36)+'" width="15" height="47" rx="5" fill="#293a45"/>'+
-    '<rect x="'+(left-10)+'" y="'+(bottom-83)+'" width="15" height="47" rx="5" fill="#293a45"/><rect x="'+(right-5)+'" y="'+(bottom-83)+'" width="15" height="47" rx="5" fill="#293a45"/>'+
-    '<path d="M'+(left+15)+' '+top+'Q90 '+(top-5)+' '+(right-15)+' '+top+'L'+(right-2)+' '+(top+23)+'L'+right+' '+(bottom-36)+'Q'+right+' '+(bottom-10)+' '+(right-15)+' '+bottom+'Q90 '+(bottom+6)+' '+(left+15)+' '+bottom+'Q'+left+' '+(bottom-10)+' '+left+' '+(bottom-36)+'L'+left+' '+(top+23)+'Z" fill="'+color+'" stroke="#687f8e" stroke-width="2"/>'+
-    '<path d="M'+(L+2)+' '+(windshield+6)+'Q90 '+windshield+' '+(R-2)+' '+(windshield+6)+'L'+R+' '+(windshield+41)+'H'+L+'Z" fill="'+glass+'" stroke="#bdd0da" stroke-width="1.5"/>'+
-    '<rect x="'+L+'" y="'+(windshield+44)+'" width="'+(R-L)+'" height="'+Math.max(9,back-windshield-83)+'" rx="7" fill="'+color+'" stroke="#8599a9"/>'+
-    '<path d="M'+L+' '+(back-35)+'H'+R+'L'+(R-2)+' '+back+'Q90 '+(back+5)+' '+(L+2)+' '+back+'Z" fill="'+glass+'" stroke="#bdd0da" stroke-width="1.5"/>'+
-    '<path d="M'+(left+7)+' '+(top+20)+'h13M'+(right-20)+' '+(top+20)+'h13" stroke="#fff3dc" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M'+(left+7)+' '+(bottom-20)+'h13M'+(right-20)+' '+(bottom-20)+'h13" stroke="#c55d56" stroke-width="5" stroke-linecap="round"/></svg>';
+    const [width,factor]=currentGeometry(),v=currentStyle();
+    const type=vehicleMeta?.body||'hatch',len=Math.min(301,factor*178),front=170-len/2,rear=170+len/2;
+    const W=width*.55,left=90-W,right=90+W,hood=front+len*v.hood,deck=rear-len*v.deck;
+    const roofW=W*v.roof,roofL=90-roofW,roofR=90+roofW;
+    const glass='#4d6979',paintColor=paintData[paint],head=v.head;
+    const bonnetLamp=(sign)=>{
+      const x=90+sign*(W*.66),leftX=x-10,top=front+len*.085,w=head==='round'?11:head==='square'?14:18;
+      const radius=head==='round'?6:head==='square'?2:3;
+      return '<rect x="'+(leftX-(w-12)/2)+'" y="'+top+'" width="'+w+'" height="'+(head==='round'?13:head==='blade'?7:10)+'" rx="'+radius+'" fill="#fff3dc" stroke="#d0dbe0" stroke-width="1.1"/>';
+    };
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 340" role="img" aria-label="Illustrative '+vehicleMeta.model+' top view">'+
+      '<rect x="'+(left-10)+'" y="'+(front+len*.19)+'" width="14" height="'+(len*.21)+'" rx="5" fill="#283842"/>'+
+      '<rect x="'+(right-4)+'" y="'+(front+len*.19)+'" width="14" height="'+(len*.21)+'" rx="5" fill="#283842"/>'+
+      '<rect x="'+(left-10)+'" y="'+(rear-len*.38)+'" width="14" height="'+(len*.21)+'" rx="5" fill="#283842"/>'+
+      '<rect x="'+(right-4)+'" y="'+(rear-len*.38)+'" width="14" height="'+(len*.21)+'" rx="5" fill="#283842"/>'+
+      '<path d="M'+(90-W*v.nose*.70)+' '+front+'Q90 '+(front-5)+' '+(90+W*v.nose*.70)+' '+front+'L'+(90+W*v.nose)+' '+(front+len*.09)+'Q'+right+' '+(front+len*.16)+' '+right+' '+(front+len*.24)+'L'+right+' '+(rear-len*.20)+'Q'+right+' '+(rear-len*.08)+' '+(90+W*v.tail)+' '+(rear-len*.04)+'L'+(90+W*v.tail*.77)+' '+rear+'Q90 '+(rear+4)+' '+(90-W*v.tail*.77)+' '+rear+'L'+(90-W*v.tail)+' '+(rear-len*.04)+'Q'+left+' '+(rear-len*.08)+' '+left+' '+(rear-len*.20)+'L'+left+' '+(front+len*.24)+'Q'+left+' '+(front+len*.16)+' '+(90-W*v.nose)+' '+(front+len*.09)+'Z" fill="'+paintColor+'" stroke="#6d8491" stroke-width="2"/>'+
+      '<path d="M'+(roofL+5)+' '+(hood+len*.030)+'Q90 '+(hood+len*.002)+' '+(roofR-5)+' '+(hood+len*.030)+'L'+roofR+' '+(hood+len*.13)+'H'+roofL+'Z" fill="'+glass+'" stroke="#bbced7" stroke-width="1.4"/>'+
+      '<rect x="'+roofL+'" y="'+(hood+len*.135)+'" width="'+(roofR-roofL)+'" height="'+Math.max(8,deck-hood-len*.25)+'" rx="'+(4+v.round*4)+'" fill="'+paintColor+'" stroke="#849bab"/>'+
+      '<path d="M'+roofL+' '+(deck-len*.12)+'H'+roofR+'L'+(roofR-3)+' '+deck+'Q90 '+(deck+4)+' '+(roofL+3)+' '+deck+'Z" fill="'+glass+'" stroke="#bbced7" stroke-width="1.4"/>'+
+      '<path d="M'+(roofL-4)+' '+(hood+len*.15)+'v'+Math.max(15,deck-hood-len*.31)+'M'+(roofR+4)+' '+(hood+len*.15)+'v'+Math.max(15,deck-hood-len*.31)+'" fill="none" stroke="#788d9b" stroke-width="1" opacity=".5"/>'+
+      bonnetLamp(-1)+bonnetLamp(1)+
+      '<rect x="'+(90-W*.40)+'" y="'+(front+len*.055)+'" width="'+(W*.8)+'" height="'+(v.grille==='mesh'?8:4)+'" rx="2" fill="#33434d"/>'+
+      (v.grille==='double'?'<rect x="'+(90-W*.53)+'" y="'+(front+len*.11)+'" width="'+(W*1.06)+'" height="7" rx="2" fill="#354b59"/>':'')+
+      (v.rearLamp==='bar'?'<rect x="'+(90-W*.72)+'" y="'+(rear-len*.055)+'" width="'+(W*1.44)+'" height="5" rx="2" fill="#c14d47"/>':
+        '<rect x="'+(90-W*.82)+'" y="'+(rear-len*.095)+'" width="12" height="'+(v.rearLamp==='tower'?21:10)+'" rx="2" fill="#c45a50"/>'+
+        '<rect x="'+(90+W*.82-12)+'" y="'+(rear-len*.095)+'" width="12" height="'+(v.rearLamp==='tower'?21:10)+'" rx="2" fill="#c45a50"/>')+
+      '</svg>';
   }
   function setVehicleSelection(){
     if(!vehicleCatalog[selectedBrand])selectedBrand='Perodua';
