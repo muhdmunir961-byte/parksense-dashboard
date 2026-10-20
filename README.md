@@ -25,28 +25,26 @@
 - Deploy. Verify `https://parkingdashboard.my.id/health` returns `{"status":"ok"}`, then sign into the website with `DASHBOARD_PASSWORD`.
 - **Never paste these secrets into GitHub, an issue, a screenshot, a chat or a public log.** Password is for web login, token only for the ESP32 device.
 
-### 2. One-time ESP32 config (no manual C++ editing)
-In the repository root on the laptop / code-server terminal, with Python 3:
+### 2. Set only three values in `main.cpp` (no wizard / config file)
+Download or clone this repository to your **own laptop**. Open `firmware/esp32-main/src/main.cpp`, then fill **only three placeholders** at the top, with cloud already enabled:
 
-```bash
-python tools/setup_firmware.py
+```cpp
+#define CLOUD_UPLINK_ENABLED true
+#define CLOUD_WIFI_SSID "YOUR_CONFIRMED_2_4_GHZ_CHANNEL_1_WIFI_NAME"
+#define CLOUD_WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define CLOUD_DEVICE_TOKEN "YOUR_COOLIFY_DEVICE_TOKEN_24_PLUS_CHARACTERS"
+#define CLOUD_API_URL "https://parkingdashboard.my.id/api/device/telemetry"
 ```
 
-The wizard will ask four things: **Android hotspot SSID**, hotspot password, the **same DEVICE_TOKEN** from Coolify, and an ESP32 local Wi-Fi password (min 8 chars). It first asks you to confirm you checked **channel 1**. It creates **`firmware/esp32-main/include/cloud_config.h`** locally and ignores this secret file in Git.
+The **actual repo contains obvious `ISI_...` placeholders**. Replace those texts in your local copy. Never push `main.cpp` containing real Wi-Fi credentials/token to GitHub or paste them into a chat. The local ESP32 hotspot password is `PARKSENSE_AP_PASSWORD`, currently `123456789`; change it to a unique string with at least 8 characters for non-lab use.
 
-The firmware can also be compiled with no file: cloud is then **disabled by default**.
+Until all three fields are filled and pass validation, the ESP32 does **not** start cloud Wi-Fi, but its local ESP-NOW/LED/buzzer logic is still available. The old `cloud_config.h` wizard is no longer needed or read by `main.cpp`. Use a **verified channel 1** hotspot/router (not merely 2.4 GHz).
 
 ### 3. Compile + flash *main ESP32 only*
 Connect your **main ESP32 via USB** with the proper USB data cable. Have PlatformIO installed in VS Code or code-server. Use the project that contains `firmware/esp32-main/platformio.ini`.
 
 ```bash
 pio run -d firmware/esp32-main -t upload
-```
-
-Or, for setup + an extra confirmation before upload:
-
-```bash
-python tools/setup_firmware.py --upload
 ```
 
 The 4 ESP-NOW pod firmwares should **not** be reflashed unless their packet struct / ID / ESP-NOW channel are known to differ; preserve working pod firmware. If PlatformIO fails, inspect the compiler error rather than guessing / changing physical wires.
@@ -107,6 +105,6 @@ Expected JSON fields: `maxSpeed, speedLimit, systemEnabled, distF, distR, distL,
 
 **Build/check locally:** `npm install && npm test` for server and UI; `pio run -d firmware/esp32-main` for firmware (PlatformIO required).
 
-The file `firmware/esp32-main/include/cloud_config.example.h` can be used manually instead of the wizard. Only use secrets in the untracked `cloud_config.h`. Git ignores that file. A valid HTTPS/TLS handshake is required; no insecure fallback.
+Only `firmware/esp32-main/src/main.cpp` is edited locally. Its full source remains part of the PlatformIO project, and the HTTPS certificate validation is embedded in it. The legacy `cloud_config.example.h` is no longer used. Keep real credentials in a private local copy of `main.cpp` and never commit them. A valid HTTPS/TLS handshake is required; no insecure fallback.
 
 **Deployment notes:** use GitHub Actions `Deploy ParkSense to Coolify` for a manual redeploy only when its separate `COOLIFY_API_TOKEN` secret and Coolify HTTPS URL are configured. Otherwise use the Coolify **Deploy** button. Code pushed to GitHub **does not prove deployment completed**.
