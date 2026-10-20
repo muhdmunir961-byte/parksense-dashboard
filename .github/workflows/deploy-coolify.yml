@@ -1,0 +1,57 @@
+name: Deploy ParkSense to Coolify
+
+on:
+  workflow_dispatch:
+    inputs:
+      coolify_url:
+        description: "HTTPS Coolify dashboard base URL (for example https://coolify.example.com)"
+        required: true
+        type: string
+      force:
+        description: "Rebuild without using cache"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Trigger ParkSense deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COOLIFY_BASE_URL: ${{ inputs.coolify_url }}
+      COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+      FORCE_REBUILD: ${{ inputs.force }}
+    steps:
+      - name: Check secure API configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$COOLIFY_API_TOKEN" ]]; then
+            echo "::error::Add a repository Actions secret called COOLIFY_API_TOKEN before deploying."
+            exit 1
+          fi
+          if [[ ! "$COOLIFY_BASE_URL" =~ ^https://[^/?#]+/?$ ]]; then
+            echo "::error::Enter an HTTPS Coolify base URL such as https://coolify.example.com. Do not use http://IP:8000."
+            exit 1
+          fi
+          if [[ "$FORCE_REBUILD" != "true" && "$FORCE_REBUILD" != "false" ]]; then
+            echo "::error::Invalid force option."
+            exit 1
+          fi
+      - name: Request Coolify deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Requesting deployment of ParkSense application ttqqbcmflywrkt1tlv4w7yj1"
+          curl --fail-with-body --silent --show-error --max-time 40 \
+            --request POST "${COOLIFY_BASE_URL%/}/api/v1/deploy" \
+            --header "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            --header "Accept: application/json" \
+            --header "Content-Type: application/json" \
+            --data "{\"uuid\":\"ttqqbcmflywrkt1tlv4w7yj1\",\"force\":$FORCE_REBUILD}"
+          echo
+          echo "Request sent. Check Coolify Deployment Logs to confirm the deployment succeeds."
