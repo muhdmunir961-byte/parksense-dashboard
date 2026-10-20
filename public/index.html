@@ -199,6 +199,12 @@ body.warning-open{overflow:hidden}
 .preview-meta>span{font:700 9px system-ui,sans-serif;color:#8497a5;letter-spacing:.5px}
 @media(max-width:690px){.vehicle-selectors{grid-template-columns:1fr 1fr}#car3dCanvas{min-height:245px;max-height:360px}}
 @media(max-width:370px){.vehicle-selectors{grid-template-columns:1fr}}
+
+.viewer-presets{position:absolute;top:14px;right:14px;display:flex;gap:4px;background:#ffffffeb;border:1px solid #d8e1e7;border-radius:6px;padding:4px;z-index:5}
+.viewer-presets[hidden]{display:none}
+.viewer-presets button{border:0;background:transparent;border-radius:4px;color:#667e91;font-size:10px;font-weight:700;padding:7px 8px}
+.viewer-presets button:hover{background:#e8f0f6}.viewer-presets button[aria-pressed="true"]{background:#dceaf6;color:#295f91}
+@media(max-width:380px){.viewer-presets{top:10px;right:8px;gap:1px}.viewer-presets button{padding:6px;font-size:9px}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -223,7 +229,8 @@ body.warning-open{overflow:hidden}
       <section class="vehicle-overview" aria-label="Car profile">
   <div class="car-preview">
     <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button></div></div>
-    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · SCROLL TO ZOOM</span></div>
+    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
+<div class="viewer-presets" id="viewerPresets" hidden aria-label="3D camera views"><button type="button" data-angle="front">Front</button><button type="button" data-angle="side">Side</button><button type="button" data-angle="top">Top</button><button type="button" data-angle="rear">Rear</button></div></div>
     <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">SILVER</small><span id="carModelAccuracy">CONCEPT VISUAL</span></div></div>
   </div>
   <div class="car-options"><span class="eyebrow">VEHICLE OVERVIEW</span><h2>Choose a vehicle</h2>
@@ -556,7 +563,7 @@ body.warning-open{overflow:hidden}
   // Profiles are hand-authored approximate geometry, never represented as official CAD.
   const vehicleCatalog={
     'Perodua':{
-      'Myvi':['hatch',[['Gen 1 · 2005–2011','myvi1'],['Gen 2 · 2011–2017','myvi2'],['Gen 3 · 2017–2021','myvi3'],['Gen 3 facelift · 2021+','myvi3f']]],
+      'Myvi':['hatch',[['Gen 1 · 2005–2008','myvi1'],['Gen 1 facelift · 2008–2011','myvi1f'],['Gen 2 · 2011–2015','myvi2'],['Gen 2 facelift · 2015–2017','myvi2f'],['Gen 3 · 2017–2021','myvi3'],['Gen 3 facelift · 2021+','myvi3f']]],
       'Axia':['hatch',[['Gen 1 · 2014–2022','axia1'],['Gen 2 · 2023+','axia2']]],
       'Bezza':['sedan',[['2016–2019','bezza'],['Facelift · 2020+','bezza']]],
       'Alza':['mpv',[['Gen 1 · 2009–2022',''],['Gen 2 · 2022+','']]],
@@ -674,7 +681,8 @@ body.warning-open{overflow:hidden}
     pickup:[103,2.05,.39,.45,1.40],coupe:[97,1.72,.28,.46,.83]
   };
   const specialGeometry={
-    myvi1:[89,1.22,.36,.52,1.12],myvi2:[92,1.28,.37,.52,1.14],
+    myvi1:[89,1.22,.36,.52,1.12],myvi1f:[89,1.23,.36,.52,1.12],
+    myvi2:[92,1.28,.37,.52,1.14],myvi2f:[93,1.29,.38,.53,1.14],
     myvi3:[96,1.34,.41,.55,1.14],myvi3f:[97,1.36,.42,.55,1.15],
     axia1:[84,1.17,.36,.48,1.07],axia2:[91,1.24,.40,.50,1.09],
     bezza:[90,1.70,.38,.50,.99],saga1:[87,1.55,.37,.48,.92],
@@ -688,7 +696,9 @@ body.warning-open{overflow:hidden}
   // not reverse-engineered vehicle dimensions or OEM licensed geometry.
   const lowPolyStyles={
     myvi1:{nose:.88,tail:.92,hood:.19,deck:.115,cabin:1.27,roof:.81,round:.82,head:'round',rearLamp:'tower',grille:'small',line:'First-gen tall roof / rounded nose'},
+    myvi1f:{nose:.87,tail:.92,hood:.20,deck:.115,cabin:1.27,roof:.81,round:.78,head:'round',rearLamp:'tower',grille:'wide',line:'First-gen facelift / updated fascia'},
     myvi2:{nose:.84,tail:.89,hood:.225,deck:.112,cabin:1.23,roof:.80,round:.59,head:'swept',rearLamp:'tower',grille:'small',line:'Second-gen compact / swept lamps'},
+    myvi2f:{nose:.83,tail:.88,hood:.23,deck:.112,cabin:1.23,roof:.79,round:.51,head:'blade',rearLamp:'wrap',grille:'wide',line:'Second-gen facelift / sporty headlamps'},
     myvi3:{nose:.77,tail:.86,hood:.255,deck:.108,cabin:1.20,roof:.77,round:.32,head:'blade',rearLamp:'wrap',grille:'wide',line:'Third-gen wider / angular front'},
     myvi3f:{nose:.76,tail:.85,hood:.26,deck:.11,cabin:1.21,roof:.77,round:.24,head:'blade',rearLamp:'wrap',grille:'double',line:'Facelift angular lamps / deep fascia'},
     saga1:{nose:.86,tail:.92,hood:.32,deck:.275,cabin:1.04,roof:.72,round:.08,head:'square',rearLamp:'square',grille:'small',line:'Original boxy three-box sedan'},
@@ -923,24 +933,62 @@ body.warning-open{overflow:hidden}
   function set3DView(active){
     orbit.active=active;
     carCanvas.hidden=!active;$('carDrawing').hidden=active;
-    $('carFront').hidden=active;$('viewerInstructions').hidden=!active;
+    $('carFront').hidden=active;$('viewerInstructions').hidden=!active;$('viewerPresets').hidden=!active;
     $('view2D').classList.toggle('active',!active);$('view3D').classList.toggle('active',active);
     $('view2D').setAttribute('aria-pressed',String(!active));$('view3D').setAttribute('aria-pressed',String(active));
     if(active){orbit.yaw=-.48;orbit.pitch=.82;orbit.zoom=1;scheduleCarDraw()}
   }
   $('view2D').addEventListener('click',()=>set3DView(false));
   $('view3D').addEventListener('click',()=>set3DView(true));
+
+  const activePointers=new Map();
+  let pinchStart=null;
   carCanvas.addEventListener('pointerdown',e=>{
-    orbit.drag={x:e.clientX,y:e.clientY,yaw:orbit.yaw,pitch:orbit.pitch,id:e.pointerId};
-    carCanvas.setPointerCapture(e.pointerId);e.preventDefault();
+    carCanvas.setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activePointers.size===1){
+      orbit.drag={x:e.clientX,y:e.clientY,yaw:orbit.yaw,pitch:orbit.pitch,id:e.pointerId};
+    }else if(activePointers.size===2){
+      const pts=[...activePointers.values()];
+      pinchStart={distance:Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)||1,zoom:orbit.zoom};
+      orbit.drag=null;
+    }
+    e.preventDefault();
   });
   carCanvas.addEventListener('pointermove',e=>{
+    if(!activePointers.has(e.pointerId))return;
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activePointers.size>=2&&pinchStart){
+      const pts=[...activePointers.values()];
+      const distance=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
+      orbit.zoom=Math.max(.6,Math.min(1.75,pinchStart.zoom*distance/pinchStart.distance));
+      scheduleCarDraw();return;
+    }
     const d=orbit.drag;if(!d||d.id!==e.pointerId)return;
     orbit.yaw=d.yaw+(e.clientX-d.x)*.012;
     orbit.pitch=Math.max(.13,Math.min(1.53,d.pitch+(e.clientY-d.y)*.008));
+    document.querySelectorAll('[data-angle]').forEach(b=>b.setAttribute('aria-pressed','false'));
     scheduleCarDraw();
   });
-  ['pointerup','pointercancel','lostpointercapture'].forEach(event=>carCanvas.addEventListener(event,()=>orbit.drag=null));
+  function releasePointer(e){
+    activePointers.delete(e.pointerId);
+    if(activePointers.size<2)pinchStart=null;
+    if(activePointers.size===1){
+      const [id,pt]=[...activePointers.entries()][0];
+      orbit.drag={id,x:pt.x,y:pt.y,yaw:orbit.yaw,pitch:orbit.pitch};
+    }else{orbit.drag=null}
+  }
+  ['pointerup','pointercancel','lostpointercapture'].forEach(event=>carCanvas.addEventListener(event,releasePointer));
+  const cameraAngles={
+    front:{yaw:0,pitch:.26},side:{yaw:Math.PI/2,pitch:.33},
+    top:{yaw:0,pitch:1.52},rear:{yaw:Math.PI,pitch:.26}
+  };
+  document.querySelectorAll('[data-angle]').forEach(btn=>btn.addEventListener('click',()=>{
+    const a=cameraAngles[btn.dataset.angle];if(!a)return;
+    orbit.yaw=a.yaw;orbit.pitch=a.pitch;orbit.zoom=1;
+    document.querySelectorAll('[data-angle]').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));
+    scheduleCarDraw();
+  }));
   carCanvas.addEventListener('wheel',e=>{
     e.preventDefault();orbit.zoom=Math.max(.6,Math.min(1.75,orbit.zoom-e.deltaY*.001));scheduleCarDraw();
   },{passive:false});
