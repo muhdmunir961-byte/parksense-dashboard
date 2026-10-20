@@ -13,6 +13,10 @@
 #else
 #define CLOUD_UPLINK_ENABLED false
 #endif
+// Use the configured local fallback AP password; default unchanged in offline/demo builds.
+#ifndef PARKSENSE_AP_PASSWORD
+#define PARKSENSE_AP_PASSWORD "123456789"
+#endif
 #if CLOUD_UPLINK_ENABLED
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -522,7 +526,7 @@ void setup() {
   esp_wifi_stop();
   delay(1000);
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP("Monitor Dashboard", "123456789", 1);
+  WiFi.softAP("Monitor Dashboard", PARKSENSE_AP_PASSWORD, 1);
   esp_wifi_set_ps(WIFI_PS_NONE);
   WiFi.setSleep(false);
   esp_wifi_set_max_tx_power(78);
