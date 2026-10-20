@@ -252,6 +252,20 @@ body.warning-open{overflow:hidden}
 #wsUrl[readonly]{background:#f4f7f8;color:#577082;cursor:default}
 @media(max-width:900px){.cloud-check{grid-template-columns:repeat(3,minmax(0,1fr))}.cloud-check>button{grid-column:1/-1;justify-self:start}}
 @media(max-width:520px){.cloud-check{grid-template-columns:repeat(2,minmax(0,1fr))}.cloud-check>button{grid-column:1/-1}}
+
+.limit-direct{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:15px 0 5px;padding:13px 0 8px;border-top:1px solid #e2e9ee}
+.limit-direct label{font:750 10px system-ui,sans-serif;letter-spacing:.65px;color:#3d5b72}
+.limit-direct label small{display:block;font-size:9px;color:#8b9fac;letter-spacing:0;margin-top:4px}
+.limit-direct-form{display:flex;gap:8px;align-items:center}
+.limit-direct input{width:78px;min-width:0;background:#fff;border:1px solid #cddbe5;color:#254960;border-radius:6px;padding:9px 10px;font:700 15px ui-monospace,monospace;text-align:center}
+.limit-direct-form .solid-button{padding:9px 14px;min-height:38px}
+.limit-direct input:disabled,.limit-direct button:disabled{opacity:.45;cursor:not-allowed}
+.limit-feedback{font-size:10px;line-height:1.55;color:#6c8190;min-height:17px;margin-top:5px}
+.limit-feedback[data-state="pending"]{color:#a36a24}
+.limit-feedback[data-state="success"]{color:#26765c;font-weight:680}
+.limit-feedback[data-state="error"]{color:#b64c3a}
+.limit-feedback[data-state="demo"]{color:#7d8d9c}
+@media(max-width:530px){.limit-direct{grid-template-columns:1fr;gap:7px}.limit-direct-form{justify-content:space-between}.limit-direct input{flex:1;max-width:115px}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -342,7 +356,12 @@ body.warning-open{overflow:hidden}
             <div class="speed-meter" role="meter" aria-label="Vehicle speed relative to 100 km/h" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8" id="speedMeter"><div class="speed-fill" id="speedFill" style="width:8%"></div></div>
             <div class="meter-ticks"><span>0</span><span id="midTick">50</span><span>100 km/h</span></div>
             <div class="speedfooter"><div><div class="micro">Speed alert threshold</div><div class="limit-num"><span id="limitValue">15</span> <small>km/h</small></div></div><div class="control-row"><button id="limitMinus" class="square-button" title="Decrease threshold" aria-label="Decrease threshold">−</button><button id="limitPlus" class="square-button" title="Increase threshold" aria-label="Increase threshold">+</button><button id="limitReset" class="square-button" title="Reset to 15 km/h" aria-label="Reset threshold">↺</button></div></div>
-            <div class="control-hint" id="controlHint">Demo controls active. On the device, set the threshold with the rotary encoder.</div>
+            <div class="limit-direct">
+  <label for="limitTarget">TARGET ALERT LIMIT <small>km/h · 5–100</small></label>
+  <div class="limit-direct-form"><input id="limitTarget" type="number" min="5" max="100" step="1" value="15" inputmode="numeric" aria-label="Speed warning threshold in kilometres per hour"><button id="limitApply" type="button" class="solid-button">Apply</button></div>
+</div>
+<div class="control-hint" id="controlHint">In live mode, this changes only the ESP32 speed warning threshold — not physical vehicle speed.</div>
+<div class="limit-feedback" id="limitFeedback" role="status" aria-live="polite">Ready to configure alert threshold.</div>
           </div>
         </section>
         <section class="panel carpanel" aria-label="Four-direction surround view">
@@ -415,6 +434,7 @@ body.warning-open{overflow:hidden}
   const zones=[['F','distF','humanF'],['R','distR','humanR'],['L','distL','humanL'],['Rt','distRefR','humanRefR']];
   const DEFAULT_HOST='192.168.4.1';
   let mode='demo', socket=null, wantsConnection=false, reconnectTimer=null, lastTelemetry=0, remoteControl=false, lastAlert='', demoStep=0, lastSensorState={};
+  let limitPending=false;
   let telemetry={systemEnabled:false,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};
   let eventLog=[];
   let demoProfile='normal';
@@ -426,7 +446,46 @@ body.warning-open{overflow:hidden}
   function stamp(){return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
   function log(message){if(eventLog[0] && eventLog[0].message===message)return;eventLog.unshift({message,time:stamp()});eventLog=eventLog.slice(0,5);$('eventList').replaceChildren(...eventLog.map(x=>{let e=document.createElement('div'),s=document.createElement('span'),t=document.createElement('time');e.className='event';s.textContent=x.message;t.textContent=x.time;e.append(s,t);return e}));}
   function setMode(next,status){mode=next;$('modeText').textContent=next==='demo'?'DEMO MODE':'LIVE MODE';$('modeDot').className='dot '+(next==='demo'?'demo':'good');$('readingType').textContent=next==='demo'?'SIMULATED':'ESP32 FEED';$('connectionDot').className='dot '+(status==='connected'?'good':'bad');$('connectionText').textContent=next==='demo'?'DEVICE NOT CONNECTED':status==='connected'?'DEVICE CONNECTED':status==='connecting'?'CONNECTING…':'DEVICE DISCONNECTED';$('lastUpdate').textContent=next==='demo'?'Last update — demonstration':'Last update — awaiting data';updateControls();}
-  function updateControls(){let enabled=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN);['limitMinus','limitPlus','limitReset'].forEach(id=>$(id).disabled=!enabled);$('controlHint').textContent=mode==='demo'?'Demo controls only — simulated threshold.':remoteControl?'Remote control enabled':'Live dashboard is read-only. Adjust speed alert threshold with the ESP32 rotary encoder.';}
+  function updateControls(){
+    const ready=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN);
+    for(const id of ['limitMinus','limitPlus','limitReset','limitApply','limitTarget'])$(id).disabled=!ready||limitPending;
+    $('controlHint').textContent=mode==='demo'
+      ?'Simulation only: changing the threshold does not affect ESP32.'
+      :remoteControl?'Live control changes the speed WARNING limit on ESP32; never the engine, accelerator or brakes.'
+      :'Live control is unavailable until an updated cloud-enabled ESP32 sends telemetry. Rotary encoder still works locally.';
+  }
+  function reportLimit(message,state='neutral'){
+    $('limitFeedback').textContent=message;
+    $('limitFeedback').dataset.state=state;
+  }
+  function reflectLimitInput(){
+    if(document.activeElement!==$('limitTarget')&&!limitPending)
+      $('limitTarget').value=String(telemetry.speedLimit||15);
+  }
+  async function submitLimit(value){
+    if(!Number.isInteger(value)||value<5||value>100){reportLimit('Choose a whole number between 5 and 100 km/h.','error');return;}
+    if(mode==='demo'){
+      telemetry.speedLimit=value;reflectLimitInput();render();
+      reportLimit('DEMO ONLY · Target changed to '+value+' km/h; ESP32 unchanged.','demo');
+      return;
+    }
+    if(limitPending||!remoteControl||!socket||socket.readyState!==WebSocket.OPEN){reportLimit('ESP32 not ready to accept a new threshold.','error');return;}
+    limitPending=true;updateControls();reportLimit('Sending '+value+' km/h. Waiting for ESP32 confirmation…','pending');
+    try{
+      const res=await fetch('/api/control/speed-limit',{
+        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({value})
+      });
+      const payload=await res.json();
+      if(!res.ok)throw Error(payload.error||'Unable to send threshold');
+      // Confirmation comes from ESP32's next authenticated telemetry packet,
+      // not from the HTTP 202 command-queued response.
+      if(limitPending)reportLimit('Sent '+value+' km/h · pending ESP32 acknowledgement.','pending');
+    }catch(error){
+      limitPending=false;updateControls();
+      reportLimit('Not applied: '+error.message,'error');
+    }
+  }
   function severity(dist,human){if(dist===-1||!Number.isFinite(dist)||dist<2)return'offline';if(dist<35)return'danger';if(dist<55||human===1)return'warn';return'good';}
   function formatDistance(dist){if(dist===-1||!Number.isFinite(dist)||dist<2)return 'OFFLINE';if(dist>=395)return '≥395 <small>cm</small>';return String(Math.round(dist))+' <small>cm</small>';}
 
@@ -1112,10 +1171,10 @@ body.warning-open{overflow:hidden}
   function parseData(payload){
     if(!payload||typeof payload!=='object'||!('distF'in payload)||!('maxSpeed'in payload))return;
     telemetry={...telemetry,...payload};remoteControl=payload.remoteControl===true;
-    lastTelemetry=Date.now();$('lastUpdate').textContent='Last update — '+stamp();updateControls();render();
+    lastTelemetry=Date.now();$('lastUpdate').textContent='Last update — '+stamp();updateControls();render();reflectLimitInput();
   }
   function clearConnection(){wantsConnection=false;clearTimeout(reconnectTimer);if(socket){let old=socket;socket=null;old.onclose=null;old.onmessage=null;old.onerror=null;try{old.close()}catch(e){}}}
-  function startDemo(){clearConnection();remoteControl=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('demo','disconnected');log('Switched to simulation');render();}
+  function startDemo(){clearConnection();remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
   function connect(){
     const url=$('wsUrl').value.trim();
     if(!/^wss?:\/\/[a-zA-Z0-9.\-\[\]:]+(?:\/[^\s]*)?$/.test(url)){$('connectHelp').textContent='Enter a valid ws:// or wss:// WebSocket address.';return;}
@@ -1132,18 +1191,34 @@ body.warning-open{overflow:hidden}
     candidate.onopen=()=>{if(candidate!==socket)return;setMode('live','connecting');$('connectHelp').textContent='Connected to Coolify relay — waiting for ESP32 telemetry.';log('Connected to secure relay; waiting for ESP32');};
     candidate.onmessage=event=>{if(candidate!==socket)return;try{const msg=JSON.parse(event.data);
       if(msg.type==='telemetry'){setMode('live','connected');$('connectHelp').textContent='Live ESP32 telemetry is connected through Coolify.';parseData(msg.data);}
-      else if(msg.type==='status'){
-        if(!msg.deviceOnline){remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
+      else if(msg.type==='speed_limit_command'){
+        if(msg.state==='pending'){
+          limitPending=true;reportLimit('Setting '+msg.value+' km/h · waiting for ESP32…','pending');updateControls();
+        }else if(msg.state==='applied'){
+          limitPending=false;updateControls();
+          reportLimit('ESP32 CONFIRMED · Warning threshold '+msg.value+' km/h.','success');
+          log('ESP32 confirmed speed alert limit '+msg.value+' km/h');
+        }else if(msg.state==='failed'){
+          limitPending=false;updateControls();
+          reportLimit('Not applied: '+(msg.message||'ESP32 did not acknowledge.'),'error');
+        }
+      }else if(msg.type==='status'){
+        if(!msg.deviceOnline){limitPending=false;remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
       } else if(msg.type==='error'){$('connectHelp').textContent=msg.message||'Server rejected command';}
     }catch(e){console.warn('Invalid relay message:',e)}};
     candidate.onerror=()=>{if(candidate===socket)$('connectHelp').textContent='Unable to reach the Coolify relay. Check your public HTTPS domain and session.';};
-    candidate.onclose=event=>{if(candidate!==socket)return;if(event.code===4401){location.href='/login';return;}socket=null;remoteControl=false;setMode('live','disconnected');telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};render();log('ESP32 connection lost — retrying');if(wantsConnection)reconnectTimer=setTimeout(openSocket,2500);};
+    candidate.onclose=event=>{if(candidate!==socket)return;if(event.code===4401){location.href='/login';return;}socket=null;remoteControl=false;limitPending=false;setMode('live','disconnected');telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};render();log('ESP32 connection lost — retrying');if(wantsConnection)reconnectTimer=setTimeout(openSocket,2500);};
   }
   function changeLimit(delta,reset){
-    const current=Number(telemetry.speedLimit)||15;let next=reset?15:Math.max(5,Math.min(100,current+delta));
-    if(mode==='demo'){telemetry.speedLimit=next;render();return;}
-    if(socket&&socket.readyState===WebSocket.OPEN&&remoteControl){socket.send(JSON.stringify({cmd:'setSpeedLimit',value:next}));}
+    const current=Number(telemetry.speedLimit)||15;
+    const next=reset?15:Math.max(5,Math.min(100,current+delta));
+    $('limitTarget').value=String(next);
+    submitLimit(next);
   }
+  $('limitApply').addEventListener('click',()=>submitLimit(Number($('limitTarget').value)));
+  $('limitTarget').addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();submitLimit(Number($('limitTarget').value))}
+  });
   function setActiveScenario(){document.querySelectorAll('[data-profile]').forEach(button=>{const selected=button.dataset.profile===demoProfile;button.classList.toggle('is-active',selected);button.setAttribute('aria-pressed',String(selected));});}
   function setScenario(profile){
     if(mode!=='demo')startDemo();
