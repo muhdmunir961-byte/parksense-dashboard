@@ -47,7 +47,7 @@ function json(res, status, data, headers={}) { respond(res, status, JSON.stringi
 function redirect(res, url) { res.writeHead(302, { Location: url, 'Cache-Control':'no-store' });res.end(); }
 function publicFile(res, filename) {
   respond(res,200,fs.readFileSync(path.join(__dirname, 'public',filename)), 'text/html; charset=utf-8', {
-    'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:; base-uri 'none'; form-action 'self'"
+    'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data: https://commons.wikimedia.org https://upload.wikimedia.org; frame-src https://sketchfab.com; base-uri 'none'; form-action 'self'"
   });
 }
 async function body(req, maxBytes=4096) {
