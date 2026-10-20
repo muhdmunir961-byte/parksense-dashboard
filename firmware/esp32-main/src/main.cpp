@@ -460,6 +460,9 @@ const char index_html[] PROGMEM = R"PARKSENSE_HTML(
 #if CLOUD_UPLINK_ENABLED
 // Network I/O in a separate FreeRTOS task, never in the main alert-control loop.
 void cloudTelemetryTask(void *ignored) {
+  // Persist only the last received command ID in RAM, until restart.
+  // Sending this ID with the next telemetry packet lets Coolify confirm execution.
+  String lastAppliedCommandId;
   // HTTPS uplink is deliberately isolated from the physical alert loop.
   // Always associate on channel 1; NEVER scan or change to the phone hotspot's auto channel.
   configTime(0, 0, "pool.ntp.org", "time.google.com");
@@ -486,6 +489,10 @@ void cloudTelemetryTask(void *ignored) {
     if (connected && time(nullptr) > 1700000000) {
       JsonDocument doc;
       makeTelemetry(doc);
+      // Advertise remote threshold capability only with cloud-enabled firmware.
+      // The ESP32 never accepts motor, brake or throttle commands.
+      doc["cloudControl"] = 1;
+      if(lastAppliedCommandId.length()==16) doc["commandApplied"] = lastAppliedCommandId;
       String body;
       serializeJson(doc, body);
       WiFiClientSecure secureClient;
@@ -497,7 +504,27 @@ void cloudTelemetryTask(void *ignored) {
         http.addHeader("Authorization", String("Bearer ") + CLOUD_DEVICE_TOKEN);
         http.addHeader("Content-Type", "application/json");
         int status = http.POST(body);
-        if (status != HTTP_CODE_OK) Serial.printf("[Cloud] Telemetry result: %d\n", status);
+        if (status == HTTP_CODE_OK) {
+          const String answer=http.getString();
+          // Limit memory use; refuse unexpected instructions and untrusted payloads.
+          if(answer.length()>0 && answer.length()<=512) {
+            JsonDocument reply;
+            if(!deserializeJson(reply,answer)) {
+              JsonVariantConst command=reply["command"];
+              const char *type=command["type"] | "";
+              const char *id=command["id"] | "";
+              const int requested=command["value"] | -1;
+              if(strcmp(type,"set_speed_limit")==0 &&
+                 strlen(id)==16 && requested>=5 && requested<=100) {
+                // ONLY adjust the ESP32's warning-threshold variable.
+                // Physical brake/throttle control is not implemented.
+                speedLimit=requested;
+                lastAppliedCommandId=id;
+                Serial.printf("[Cloud] Speed ALERT limit now %d km/h (ESP32 applied)\n", requested);
+              }
+            }
+          }
+        } else Serial.printf("[Cloud] Telemetry result: %d\n", status);
         http.end();
       }
     }
