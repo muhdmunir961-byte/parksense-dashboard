@@ -242,6 +242,16 @@ body.warning-open{overflow:hidden}
 .car-stage:has(.licensed-pane:not([hidden])):before{display:none}
 #viewerPresets[hidden],#carDrawing[hidden]{display:none!important}
 @media(max-width:680px){.real-model-option{padding:14px 12px}.licensed-pane iframe{height:340px}.car-options{padding:17px 14px}}
+
+.cloud-check{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:13px;padding:15px 0 12px;border-top:1px solid #e5ebef;margin-top:18px}
+.cloud-check>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.cloud-check span{color:#899aaa;font:750 9px ui-monospace,monospace;letter-spacing:.7px}
+.cloud-check strong{font:750 12px system-ui,sans-serif;color:#2b536f;overflow-wrap:anywhere}
+.cloud-check .outline-button{min-width:0;white-space:nowrap}
+.cloud-help{border-top:1px solid #e9eef1;padding-top:10px;font-size:11px;line-height:1.65;color:#8595a1}
+#wsUrl[readonly]{background:#f4f7f8;color:#577082;cursor:default}
+@media(max-width:900px){.cloud-check{grid-template-columns:repeat(3,minmax(0,1fr))}.cloud-check>button{grid-column:1/-1;justify-self:start}}
+@media(max-width:520px){.cloud-check{grid-template-columns:repeat(2,minmax(0,1fr))}.cloud-check>button{grid-column:1/-1}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -376,7 +386,14 @@ body.warning-open{overflow:hidden}
         <div><div class="panel-title">Warning sound</div><p>Optional audio from this browser. Enable sound once to hear incoming danger alerts. Mute and test affect this browser only; hardware LED and buzzer logic on the ESP32 are never disabled from here.</p></div>
         <div class="hmi-audio-actions"><span id="audioStatus" class="audio-pill">BROWSER MUTED</span><button id="soundToggle" class="hmi-btn blue" type="button">Enable sound</button><button id="testSound" class="hmi-btn" type="button">Test beep</button></div>
       </section>
-      <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Connection settings</div><span class="micro">COOLIFY RELAY</span></div><p class="subnote">Live telemetry is streamed from the ESP32 via the Coolify server. Dashboard connects to the same host.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="wss://your-domain/ws"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Connect live</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">The ESP32 must send HTTPS telemetry to Coolify over a Wi-Fi connection. For ESP-NOW sensor pods, maintain 2.4 GHz channel 1 as configured in firmware.</div></div></section>
+      <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Live connection</div><span class="micro">AUTO / COOLIFY</span></div><p class="subnote">This dashboard automatically connects to its own secure server. The ESP32 posts readings separately. No IP or WebSocket address needs to be typed.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="Automatically determined" readonly aria-readonly="true"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Reconnect</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">Only the ESP32 posts telemetry. The Android hotspot must be on 2.4 GHz channel 1 for ESP-NOW coexistence.</div>
+  <div class="cloud-check" aria-label="Connection self-check">
+    <div><span>WEBSITE SERVER</span><strong id="cloudServerStatus">CHECKING</strong></div>
+    <div><span>ESP32 DEVICE</span><strong id="cloudDeviceStatus">CHECKING</strong></div>
+    <div><span>LAST ESP32 REPORT</span><strong id="cloudLastSeen">—</strong></div>
+    <button type="button" class="outline-button" id="refreshCloudStatus">Check connection ↗</button>
+  </div>
+  <div class="cloud-help">If the website is online but ESP32 is offline: confirm hotspot channel 1, check ESP32 serial logs (115200), Wi-Fi credentials, DEVICE_TOKEN and HTTPS certificate. This panel is read-only; it never disables your buzzer or LEDs.</div></div></section>
       <footer class="tiny-foot">PARKSENSE / ENGINEERING PROTOTYPE · ESP32 + ESP-NOW + GPS + ULTRASONIC + PIR · Monitoring and alerts only. No physical throttle or brake control is implemented.</footer>
     </div>
     <nav class="vehicle-dock" aria-label="Vehicle system quick navigation"></nav>
@@ -1141,6 +1158,42 @@ body.warning-open{overflow:hidden}
   $('logoutBtn').addEventListener('click',async()=>{try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'});}catch(e){} location.href='/login';});
   $('connectBtn').addEventListener('click',connect);
   $('demoBtn').addEventListener('click',startDemo);
+
+  // Independent connectivity self-check: server reachable != ESP32 online.
+  async function checkCloudStatus(){
+    const btn=$('refreshCloudStatus');
+    btn.disabled=true;
+    try{
+      const res=await Promise.all([
+        fetch('/health',{cache:'no-store',credentials:'same-origin'}),
+        fetch('/api/device/status',{cache:'no-store',credentials:'same-origin'})
+      ]);
+      $('cloudServerStatus').textContent=res[0].ok?'ONLINE':'ERROR '+res[0].status;
+      if(res[1].status===401){
+        $('cloudDeviceStatus').textContent='LOGIN EXPIRED';
+        $('cloudLastSeen').textContent='—';
+      }else if(!res[1].ok){
+        $('cloudDeviceStatus').textContent='STATUS ERROR';
+        $('cloudLastSeen').textContent='—';
+      }else{
+        const state=await res[1].json();
+        $('cloudDeviceStatus').textContent=state.deviceOnline?'RECEIVING DATA':'OFFLINE / NO DATA';
+        $('cloudLastSeen').textContent=state.updatedAt
+          ?new Date(state.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+          :'NEVER';
+      }
+    }catch(error){
+      $('cloudServerStatus').textContent='UNREACHABLE';
+      $('cloudDeviceStatus').textContent='UNKNOWN';
+      $('cloudLastSeen').textContent='—';
+    }finally{
+      btn.disabled=false;
+    }
+  }
+  $('refreshCloudStatus').addEventListener('click',checkCloudStatus);
+  checkCloudStatus();
+  setInterval(()=>{if(location.hash==='#settings')checkCloudStatus()},8000);
+
   $('toConnection').addEventListener('click',()=>{location.hash='settings';navigate('settings');});
   $('limitMinus').addEventListener('click',()=>changeLimit(-1,false));$('limitPlus').addEventListener('click',()=>changeLimit(1,false));$('limitReset').addEventListener('click',()=>changeLimit(0,true));
   setInterval(()=>{
