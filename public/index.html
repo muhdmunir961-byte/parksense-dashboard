@@ -242,8 +242,8 @@ body.warning-open{overflow:hidden}
       </section>
       <section class="vehicle-overview" aria-label="Car profile">
   <div class="car-preview">
-    <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><span class="preview-live-tag" id="vehicleModeLabel">VISUAL PROFILE</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button><button type="button" class="view-mode" id="viewPhoto" aria-pressed="false" hidden>REAL PHOTO</button><button type="button" class="view-mode" id="viewLicensed" aria-pressed="false" hidden>REAL 3D</button></div></div>
-    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><div class="photo-pane" id="photoPane" hidden><img id="realPhoto" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="Licensed photograph of selected vehicle"><div class="photo-credit"><span id="realPhotoCaption"></span><a id="realPhotoLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><div class="licensed-pane" id="licensedPane" hidden><iframe id="licensedFrame" title="Creator's licensed Proton Saga 3D viewer" sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe><p>Real 3D reference · <a href="https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406" target="_blank" rel="noopener noreferrer">zairiq-123</a> / Sketchfab / <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY</a></p></div><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
+    <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><span class="preview-live-tag" id="vehicleModeLabel">VISUAL PROFILE</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button><button type="button" class="view-mode" id="viewPhoto" aria-pressed="false" hidden>REAL PHOTO</button><button type="button" class="view-mode" id="viewLicensed" aria-pressed="false" hidden>CREATOR 3D</button></div></div>
+    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><div class="photo-pane" id="photoPane" hidden><img id="realPhoto" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="Licensed photograph of selected vehicle"><div class="photo-credit"><span id="realPhotoCaption"></span><a id="realPhotoLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><div class="licensed-pane" id="licensedPane" hidden><iframe id="licensedFrame" title="Creator-credited community 3D viewer" sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe><p><span id="creator3DDescription">Third-party reference</span> · <a id="creator3DLink" target="_blank" rel="noopener noreferrer" href="https://sketchfab.com">View original model / creator ↗</a></p></div><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
 <div class="viewer-presets" id="viewerPresets" hidden aria-label="3D camera views"><button type="button" data-angle="front">Front</button><button type="button" data-angle="side">Side</button><button type="button" data-angle="top">Top</button><button type="button" data-angle="rear">Rear</button></div></div>
     <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">SILVER</small><span id="carModelAccuracy">CONCEPT VISUAL</span></div></div>
   </div>
@@ -1031,11 +1031,19 @@ body.warning-open{overflow:hidden}
     myvi3f:['2021 Perodua Myvi 1.5 AV (Malaysia) front view.png','Automachi · CC BY 3.0'],
     saga1:['Proton Saga 1985.jpg','Liauzh · CC BY-SA 4.0']
   };
-  const saga3DURL='https://sketchfab.com/models/7e8adb5d0d2e4dfca405e07567835406/embed?autostart=1&ui_controls=1&ui_infos=1';
-  let realRef=null,licensedReady=false,vehicleView='top';
+  const reference3DModels={
+    myvi:{embed:'https://sketchfab.com/models/4c8a2edd636f478994f021b9279ea1e1/embed?autostart=1&ui_controls=1&ui_infos=1',source:'https://sketchfab.com/3d-models/perodua-myvi-stock-and-mod-4c8a2edd636f478994f021b9279ea1e1',label:'Perodua Myvi by un · Generation unverified · NoAI (embed only)'},
+    saga1:{embed:'https://sketchfab.com/models/7e8adb5d0d2e4dfca405e07567835406/embed?autostart=1&ui_controls=1&ui_infos=1',source:'https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406',label:'Saga 1985 by zairiq-123 · CC BY'}
+  };
+  let realRef=null,licensedReady=false,chosenCreator3D=null,vehicleView='top';
   function updateMediaReference(){
     realRef=realRefs[vehicleMeta?.profile]||null;
-    licensedReady=vehicleMeta?.profile==='saga1';
+    chosenCreator3D=vehicleMeta?.model==='Myvi'?reference3DModels.myvi:reference3DModels[vehicleMeta?.profile]||null;
+    licensedReady=!!chosenCreator3D;
+    if(chosenCreator3D){
+      $('creator3DDescription').textContent=chosenCreator3D.label;
+      $('creator3DLink').href=chosenCreator3D.source;
+    }
     $('referenceSnippet').hidden=!realRef;$('viewPhoto').hidden=!realRef;$('viewLicensed').hidden=!licensedReady;
     if(realRef){
       const file=encodeURIComponent(realRef[0]).replace(/%20/g,'_');
@@ -1056,7 +1064,7 @@ body.warning-open{overflow:hidden}
     set3DView(view==='3d');
     $('carDrawing').hidden=view!=='top';$('carFront').hidden=view!=='top';
     $('photoPane').hidden=view!=='photo';$('licensedPane').hidden=view!=='licensed';
-    if(view==='licensed')$('licensedFrame').src=saga3DURL;
+    if(view==='licensed'&&chosenCreator3D)$('licensedFrame').src=chosenCreator3D.embed;
     else if($('licensedFrame').getAttribute('src'))$('licensedFrame').removeAttribute('src');
     [['view2D','top'],['view3D','3d'],['viewPhoto','photo'],['viewLicensed','licensed']].forEach(([id,state])=>{
       $(id).classList.toggle('active',view===state);$(id).setAttribute('aria-pressed',String(view===state))
