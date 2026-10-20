@@ -295,13 +295,7 @@ body.warning-open{overflow:hidden}
       <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Connection settings</div><span class="micro">COOLIFY RELAY</span></div><p class="subnote">Live telemetry is streamed from the ESP32 via the Coolify server. Dashboard connects to the same host.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="wss://your-domain/ws"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Connect live</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">The ESP32 must send HTTPS telemetry to Coolify over a Wi-Fi connection. For ESP-NOW sensor pods, maintain 2.4 GHz channel 1 as configured in firmware.</div></div></section>
       <footer class="tiny-foot">PARKSENSE / ENGINEERING PROTOTYPE · ESP32 + ESP-NOW + GPS + ULTRASONIC + PIR · Monitoring and alerts only. No physical throttle or brake control is implemented.</footer>
     </div>
-    <nav class="vehicle-dock" aria-label="Vehicle system quick navigation">
-      <a class="dock-entry current" href="#overview" title="Vehicle overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 10 12 3l9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span>Home</span></a>
-      <a class="dock-entry" href="#sensorDiagnostics" title="Proximity sensors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M8 8a6 6 0 0 0 0 8m8-8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14m14-14a10 10 0 0 1 0 14"/></svg><span>Sensors</span></a>
-      <a class="dock-entry" href="#eventSection" title="Activity events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l3-6 4 12 3-6h4"/></svg><span>Alerts</span></a>
-      <a class="dock-entry" href="#connectionSettings" title="Cloud connection settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg><span>Settings</span></a>
-      <div class="dock-clock" aria-label="Local time"><span id="systemClock">--:--</span><small>LOCAL TIME</small></div>
-    </nav>
+    <nav class="vehicle-dock" aria-label="Vehicle system quick navigation"></nav>
   </div>
 </div>
 
