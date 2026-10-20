@@ -46,22 +46,23 @@ jobs:
           key: platformio-esp32-v2-${{ hashFiles('firmware/**/platformio.ini') }}
       - name: Install PlatformIO CLI
         run: python -m pip install --upgrade platformio
-      - name: Compile safe offline ESP32 main (no secrets)
+      - name: Compile one-file cloud-ready ESP32 main (no secrets)
         run: pio run -d firmware/esp32-main
-      - name: Compile HTTPS-enabled ESP32 main with throwaway test config
+      - name: Compile offline fallback without cloud
         shell: bash
         run: |
           set -euo pipefail
-          trap 'rm -f firmware/esp32-main/include/cloud_config.h' EXIT
-          cat > firmware/esp32-main/include/cloud_config.h <<'HEADER'
-          #pragma once
-          #define CLOUD_UPLINK_ENABLED true
-          #define CLOUD_WIFI_SSID "TEST_CHANNEL_1_WIFI"
-          #define CLOUD_WIFI_PASSWORD "TEST_NOT_A_REAL_PASSWORD"
-          #define CLOUD_API_URL "https://parkingdashboard.my.id/api/device/telemetry"
-          #define CLOUD_DEVICE_TOKEN "TEST_ONLY_DO_NOT_USE_FAKE_SECRET_123456789"
-          #define PARKSENSE_AP_PASSWORD "TEST_AP_PASSWORD_123456"
-          HEADER
+          file="firmware/esp32-main/src/main.cpp"
+          cp "$file" "$file.ci-backup"
+          trap 'mv "$file.ci-backup" "$file"' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('firmware/esp32-main/src/main.cpp')
+          text = p.read_text()
+          old = '#define CLOUD_UPLINK_ENABLED true'
+          assert text.count(old) == 1
+          p.write_text(text.replace(old, '#define CLOUD_UPLINK_ENABLED false'))
+          PY
           pio run -d firmware/esp32-main -t clean
           pio run -d firmware/esp32-main
       - name: Compile ESP-NOW sensor pod example
