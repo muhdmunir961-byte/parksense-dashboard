@@ -7,22 +7,81 @@
 #include <TinyGPS++.h>
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
-// Cloud is opt-in. The original sensor/alert firmware builds even before setup.
+// ============================================================================
+// PARKSENSE — ONE-FILE ESP32 SETUP (EDIT HERE ON YOUR LAPTOP, NOT ON GITHUB)
+// ============================================================================
+// You only need to edit THIS main.cpp file. Everything else comes with the
+// existing PlatformIO project. Do not upload this file back to a public GitHub
+// repo after entering Wi-Fi passwords or your private Coolify device token.
+//
+// BEFORE turning cloud ON: verify router/hotspot uses 2.4 GHz CHANNEL 1.
+// All four ESP-NOW sensor pods use channel 1; other channels can break them.
+//
+// Step 1: Change false -> true ONLY after verifying channel 1.
+// Step 2: Enter your real Wi-Fi SSID, Wi-Fi password and Coolify DEVICE_TOKEN.
+// Step 3: Save main.cpp, connect MAIN ESP32 by USB, then PlatformIO Upload.
+//
+// If you already made include/cloud_config.h using the old setup wizard, it
+// takes priority. Otherwise this self-contained block is all you edit.
 #if __has_include("cloud_config.h")
 #include "cloud_config.h"
 #else
 #define CLOUD_UPLINK_ENABLED false
+#define CLOUD_WIFI_SSID "PUT_YOUR_2_4_GHZ_CH1_WIFI_NAME_HERE"
+#define CLOUD_WIFI_PASSWORD "PUT_YOUR_WIFI_PASSWORD_HERE"
+#define CLOUD_DEVICE_TOKEN "PUT_YOUR_COOLIFY_DEVICE_TOKEN_HERE"
+#define CLOUD_API_URL "https://parkingdashboard.my.id/api/device/telemetry"
+#define PARKSENSE_AP_PASSWORD "123456789" // Optional: change to a NEW 8+ character password
 #endif
-// Use the configured local fallback AP password; default unchanged in offline/demo builds.
-#ifndef PARKSENSE_AP_PASSWORD
-#define PARKSENSE_AP_PASSWORD "123456789"
-#endif
+
 #if CLOUD_UPLINK_ENABLED
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <time.h>
-#include "cloud_ca.h"
+// HTTPS TLS trust anchor is embedded in main.cpp to simplify one-file setup.
+// Keep certificate validation ENABLED; never call setInsecure().
+// Different Cloudflare certificates may require updating this root certificate.
+// Public Let's Encrypt ISRG Root X1 trust anchor. Uses TLS certificate validation.
+// If your domain uses another issuer, supply the matching trusted CA instead.
+static const char CLOUD_ROOT_CA[] PROGMEM = R"PS_ROOT_CA(
+-----BEGIN CERTIFICATE-----
+MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
+TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
+WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
+ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
+MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
+h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
+0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
+A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
+T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
+B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
+B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
+KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
+OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
+jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
+qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
+rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
+HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
+hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
+3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
+NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
+ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
+TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
+jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
+oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
+4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
+mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
+emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----
+)PS_ROOT_CA";
 #endif
+
+#ifndef PARKSENSE_AP_PASSWORD
+#define PARKSENSE_AP_PASSWORD "123456789"
+#endif
+
 
 // IMPORTANT: Matches the latest user-supplied main.cpp wiring.
 // Active-HIGH LEDs and buzzer via a suitable transistor/driver.
