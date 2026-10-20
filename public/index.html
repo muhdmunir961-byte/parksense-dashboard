@@ -205,6 +205,19 @@ body.warning-open{overflow:hidden}
 .viewer-presets button{border:0;background:transparent;border-radius:4px;color:#667e91;font-size:10px;font-weight:700;padding:7px 8px}
 .viewer-presets button:hover{background:#e8f0f6}.viewer-presets button[aria-pressed="true"]{background:#dceaf6;color:#295f91}
 @media(max-width:380px){.viewer-presets{top:10px;right:8px;gap:1px}.viewer-presets button{padding:6px;font-size:9px}}
+
+.preview-actions{flex-wrap:wrap}.preview-actions button[hidden]{display:none!important}
+.photo-pane,.licensed-pane{width:100%;align-self:stretch;min-height:300px;display:flex;flex-direction:column;justify-content:center;background:#eef2f5;z-index:2}
+.photo-pane[hidden],.licensed-pane[hidden],.reference-snippet[hidden]{display:none!important}
+.photo-pane img{width:100%;height:100%;max-height:365px;min-height:210px;object-fit:contain}
+.photo-credit{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:#fff;font-size:10px}
+.photo-credit a,.reference-snippet a,.licensed-pane a{color:#29628d;text-decoration:underline}
+.reference-snippet{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #dae3e9;border-radius:7px;margin:0 0 17px;background:#f8fafb}
+.reference-snippet img{object-fit:cover;width:85px;height:62px;flex:none;border-radius:4px;background:#dce5ed}
+.reference-snippet>div{display:flex;flex-direction:column;gap:3px}
+.reference-snippet strong{font-size:11px}.reference-snippet small,.reference-snippet a{font-size:10px;color:#718696}
+.licensed-pane iframe{height:370px;width:100%;border:0}.licensed-pane p{margin:0;text-align:center;background:#fff;padding:8px 10px;font-size:10px;color:#748692}
+@media(max-width:650px){.photo-credit{flex-direction:column;align-items:start}.licensed-pane iframe{height:300px}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -228,8 +241,8 @@ body.warning-open{overflow:hidden}
       </section>
       <section class="vehicle-overview" aria-label="Car profile">
   <div class="car-preview">
-    <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button></div></div>
-    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
+    <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button><button type="button" class="view-mode" id="viewPhoto" aria-pressed="false" hidden>REAL PHOTO</button><button type="button" class="view-mode" id="viewLicensed" aria-pressed="false" hidden>REAL 3D</button></div></div>
+    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><div class="photo-pane" id="photoPane" hidden><img id="realPhoto" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="Licensed photograph of selected vehicle"><div class="photo-credit"><span id="realPhotoCaption"></span><a id="realPhotoLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><div class="licensed-pane" id="licensedPane" hidden><iframe id="licensedFrame" title="Creator's licensed Proton Saga 3D viewer" sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe><p>Real 3D reference · <a href="https://sketchfab.com/3d-models/proton-saga-car-red-1985-7e8adb5d0d2e4dfca405e07567835406" target="_blank" rel="noopener noreferrer">zairiq-123</a> / Sketchfab / <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY</a></p></div><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
 <div class="viewer-presets" id="viewerPresets" hidden aria-label="3D camera views"><button type="button" data-angle="front">Front</button><button type="button" data-angle="side">Side</button><button type="button" data-angle="top">Top</button><button type="button" data-angle="rear">Rear</button></div></div>
     <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">SILVER</small><span id="carModelAccuracy">CONCEPT VISUAL</span></div></div>
   </div>
@@ -239,7 +252,7 @@ body.warning-open{overflow:hidden}
 <label for="chooseBrand">BRAND<select id="chooseBrand"></select></label>
 <label for="chooseModel">MODEL<select id="chooseModel"></select></label>
 <label for="chooseGeneration">GENERATION / YEAR<select id="chooseGeneration"></select></label>
-</div><div class="catalog-caption">Local vehicle catalogue. Shapes are conceptual approximations, not manufacturer CAD models.</div><span class="body-options-title">VEHICLE COLOR</span>
+</div><div class="catalog-caption">Local vehicle catalogue. Shapes are conceptual approximations, not manufacturer CAD models.</div><div id="referenceSnippet" class="reference-snippet" hidden><img id="referenceThumb" alt="Real source photograph" loading="lazy" referrerpolicy="no-referrer"><div><strong>Real vehicle reference</strong><small id="referenceTitle"></small><a id="referenceLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><span class="body-options-title">VEHICLE COLOR</span>
     <div class="paint-options" role="group" aria-label="Car illustration color">
       <button data-carpaint="silver" style="background:#a8b5c2" aria-label="Silver" title="Silver"></button>
       <button data-carpaint="white" style="background:#e5eaf0" aria-label="White" title="White"></button>
@@ -774,6 +787,7 @@ body.warning-open{overflow:hidden}
     try{localStorage.setItem('ps-brand',selectedBrand);localStorage.setItem('ps-model',selectedModel);localStorage.setItem('ps-generation',selectedGen)}catch{}
     updateIllustration();
     updateVehicle3D();
+    updateMediaReference();
   }
   $('chooseBrand').addEventListener('change',()=>{selectedBrand=$('chooseBrand').value;selectedModel='';selectedGen='';setVehicleSelection()});
   $('chooseModel').addEventListener('change',()=>{selectedModel=$('chooseModel').value;selectedGen='';setVehicleSelection()});
@@ -938,8 +952,10 @@ body.warning-open{overflow:hidden}
     $('view2D').setAttribute('aria-pressed',String(!active));$('view3D').setAttribute('aria-pressed',String(active));
     if(active){orbit.yaw=-.48;orbit.pitch=.82;orbit.zoom=1;scheduleCarDraw()}
   }
-  $('view2D').addEventListener('click',()=>set3DView(false));
-  $('view3D').addEventListener('click',()=>set3DView(true));
+  $('view2D').addEventListener('click',()=>setVehicleView('top'));
+  $('view3D').addEventListener('click',()=>setVehicleView('3d'));
+  $('viewPhoto').addEventListener('click',()=>setVehicleView('photo'));
+  $('viewLicensed').addEventListener('click',()=>setVehicleView('licensed'));
 
   const activePointers=new Map();
   let pinchStart=null;
@@ -1002,6 +1018,49 @@ body.warning-open{overflow:hidden}
     }
   });
   window.addEventListener('resize',scheduleCarDraw);
+
+
+  // Real photography is licensed separately. It is NOT the texture/mesh of the 3D model.
+  const realRefs={
+    myvi1:['Perodua Myvi EZi original look 2006.jpg','Saifol · Attribution required'],
+    myvi1f:['Perodua Myvi EZi original look 2006.jpg','Saifol · Pre-facelift reference'],
+    myvi2:['Perodua Myvi (1).jpg','Bindydad123 · CC BY-SA 4.0'],
+    myvi2f:['Perodua Myvi (1).jpg','Bindydad123 · Pre-facelift reference'],
+    myvi3:['2018 Myvi Advance.jpg','Pdudkronos · CC BY-SA 4.0'],
+    myvi3f:['2021 Perodua Myvi 1.5 AV (Malaysia) front view.png','Automachi · CC BY 3.0'],
+    saga1:['Proton Saga 1985.jpg','Liauzh · CC BY-SA 4.0']
+  };
+  const saga3DURL='https://sketchfab.com/models/7e8adb5d0d2e4dfca405e07567835406/embed?autostart=1&ui_controls=1&ui_infos=1';
+  let realRef=null,licensedReady=false,vehicleView='top';
+  function updateMediaReference(){
+    realRef=realRefs[vehicleMeta?.profile]||null;
+    licensedReady=vehicleMeta?.profile==='saga1';
+    $('referenceSnippet').hidden=!realRef;$('viewPhoto').hidden=!realRef;$('viewLicensed').hidden=!licensedReady;
+    if(realRef){
+      const file=encodeURIComponent(realRef[0]).replace(/%20/g,'_');
+      const image='https://commons.wikimedia.org/wiki/Special:FilePath/'+file+'?width=720';
+      const page='https://commons.wikimedia.org/wiki/File:'+file;
+      $('referenceThumb').src=image;$('realPhoto').src=image;
+      $('referenceTitle').textContent=realRef[1];
+      $('realPhotoCaption').textContent=vehicleMeta.brand+' '+vehicleMeta.model+' · '+vehicleMeta.generation;
+      $('referenceLink').href=page;$('realPhotoLink').href=page;
+      $('referenceThumb').alt='Actual '+vehicleMeta.model+' photo by '+realRef[1];
+      $('realPhoto').alt=$('referenceThumb').alt;
+    }else{$('referenceThumb').removeAttribute('src');$('realPhoto').removeAttribute('src')}
+    if(vehicleView==='photo'&&!realRef||vehicleView==='licensed'&&!licensedReady)setVehicleView('3d');
+  }
+  function setVehicleView(view){
+    if(view==='photo'&&!realRef||view==='licensed'&&!licensedReady)return;
+    vehicleView=view;
+    set3DView(view==='3d');
+    $('carDrawing').hidden=view!=='top';$('carFront').hidden=view!=='top';
+    $('photoPane').hidden=view!=='photo';$('licensedPane').hidden=view!=='licensed';
+    if(view==='licensed')$('licensedFrame').src=saga3DURL;
+    else if($('licensedFrame').getAttribute('src'))$('licensedFrame').removeAttribute('src');
+    [['view2D','top'],['view3D','3d'],['viewPhoto','photo'],['viewLicensed','licensed']].forEach(([id,state])=>{
+      $(id).classList.toggle('active',view===state);$(id).setAttribute('aria-pressed',String(view===state))
+    });
+  }
 
   function updateIllustration(){
     const car=vehicleMeta?modelTopSvg():carSvg();
