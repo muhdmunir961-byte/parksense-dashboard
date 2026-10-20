@@ -223,6 +223,25 @@ body.warning-open{overflow:hidden}
 .licensed-pane .licensed-disclaimer{display:block;margin:0 auto 10px;padding:0 16px;color:#8294a3;font-size:10px;line-height:1.55;max-width:600px}
 #viewLicensed:not([hidden]){color:#1f547a;border-color:#c0d4e6}
 @media(max-width:700px){.preview-top{flex-wrap:wrap}.preview-actions{flex-wrap:wrap}.licensed-pane .licensed-disclaimer{font-size:10px;padding:0 12px}}
+
+/* Real-asset-only curated showroom; other bodies are excluded from selection. */
+.preview-actions[hidden],.vehicle-selectors[hidden],.paint-options[hidden],.body-options-title[hidden]{display:none!important}
+.real-model-grid{display:grid;gap:10px;margin:20px 0 11px}
+.real-model-option{display:block;width:100%;border:1px solid #dbe4e9;background:#fbfcfd;padding:15px 16px;border-radius:8px;text-align:left;color:#2a465b;cursor:pointer;transition:background .12s,border-color .12s}
+.real-model-option:hover{border-color:#a7bfd0;background:#f5f9fc}
+.real-model-option.selected{border-color:#3a779f;background:#edf5fa;box-shadow:inset 3px 0 0 #3a779f}
+.model-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.model-line strong{font-size:14px;font-weight:680;letter-spacing:-.15px}
+.model-ready{font:750 9px system-ui,sans-serif;letter-spacing:.65px;color:#3b705d;white-space:nowrap}
+.model-details,.model-maker{display:block;font-size:11px;color:#7a8c99;margin-top:5px}
+.model-maker{font-size:10px;color:#98a8b3}
+.selected-model-note{font-size:11px;line-height:1.6;color:#627988;padding:11px 12px;border:1px solid #e3e9ed;border-radius:7px;background:#f7f9fb}
+.licensed-pane{width:100%;background:#edf1f4}
+.licensed-pane iframe{height:clamp(330px,41vw,510px)}
+.licensed-pane p{line-height:1.65}
+.car-stage:has(.licensed-pane:not([hidden])):before{display:none}
+#viewerPresets[hidden],#carDrawing[hidden]{display:none!important}
+@media(max-width:680px){.real-model-option{padding:14px 12px}.licensed-pane iframe{height:340px}.car-options{padding:17px 14px}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -246,19 +265,41 @@ body.warning-open{overflow:hidden}
       </section>
       <section class="vehicle-overview" aria-label="Car profile">
   <div class="car-preview">
-    <div class="preview-top"><span>VEHICLE / MODEL VIEW</span><span class="preview-live-tag" id="vehicleModeLabel">VISUAL PROFILE</span><div class="preview-actions"><button type="button" class="view-mode active" id="view2D" aria-pressed="true">2D TOP</button><button type="button" class="view-mode" id="view3D" aria-pressed="false">3D 360°</button><button type="button" class="view-mode" id="viewPhoto" aria-pressed="false" hidden>REAL PHOTO</button><button type="button" class="view-mode" id="viewLicensed" aria-pressed="false" hidden>REAL 3D ↗</button></div></div>
-    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><div class="photo-pane" id="photoPane" hidden><img id="realPhoto" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="Licensed photograph of selected vehicle"><div class="photo-credit"><span id="realPhotoCaption"></span><a id="realPhotoLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><div class="licensed-pane" id="licensedPane" hidden><iframe id="licensedFrame" title="Creator-credited community 3D viewer" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="no-referrer"></iframe><p><span id="creator3DDescription">Third-party 3D reference · not an exact-generation CAD model</span> · <a id="creator3DLink" target="_blank" rel="noopener noreferrer" href="https://sketchfab.com">Open original / creator ↗</a></p><small class="licensed-disclaimer" id="licensedDisclaimer">Community-made 3D scene. Uses Sketchfab only after you open this tab. This does not change the ESP32 sensor readings.</small></div><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
+    <div class="preview-top"><span>REAL 3D / COMMUNITY COLLECTION</span><span class="preview-live-tag" id="vehicleModeLabel">CREATOR HOSTED</span>
+      <div class="preview-actions" hidden>
+        <button type="button" class="view-mode" id="view2D" aria-pressed="false">2D TOP</button>
+        <button type="button" class="view-mode" id="view3D" aria-pressed="false">3D CONCEPT</button>
+        <button type="button" class="view-mode" id="viewPhoto" aria-pressed="false" hidden>REAL PHOTO</button>
+        <button type="button" class="view-mode active" id="viewLicensed" aria-pressed="true">REAL 3D</button>
+      </div></div>
+    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><canvas id="car3dCanvas" hidden tabindex="0" aria-label="Interactive conceptual 360 degree car. Drag to rotate, scroll to zoom."></canvas><div class="photo-pane" id="photoPane" hidden><img id="realPhoto" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="Licensed photograph of selected vehicle"><div class="photo-credit"><span id="realPhotoCaption"></span><a id="realPhotoLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><div class="licensed-pane" id="licensedPane" hidden><iframe id="licensedFrame" title="Creator-credited community 3D viewer" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="no-referrer"></iframe><p><span id="creator3DDescription">Third-party 3D reference · not an exact-generation CAD model</span> · <a id="creator3DLink" target="_blank" rel="noopener noreferrer" href="https://sketchfab.com">Open original / creator ↗</a></p><small class="licensed-disclaimer" id="licensedDisclaimer">3D viewer hosted by Sketchfab; it loads when you open Overview. This visualization does not control ESP32 warnings or sensor readings.</small></div><span class="front" id="carFront">FRONT ↑</span><span class="viewer-instructions" id="viewerInstructions" hidden>DRAG TO ROTATE · PINCH TO ZOOM</span>
 <div class="viewer-presets" id="viewerPresets" hidden aria-label="3D camera views"><button type="button" data-angle="front">Front</button><button type="button" data-angle="side">Side</button><button type="button" data-angle="top">Top</button><button type="button" data-angle="rear">Rear</button></div></div>
-    <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">SILVER</small><span id="carModelAccuracy">CONCEPT VISUAL</span></div></div>
+    <div class="preview-bottom"><div><h2 id="carName">Perodua Myvi</h2><small id="carDescription">Choose model and generation</small></div><div class="preview-meta"><small id="carPaint">CREATOR 3D</small><span id="carModelAccuracy">CREATOR MODEL</span></div></div>
   </div>
-  <div class="car-options"><span class="eyebrow">VEHICLE OVERVIEW</span><h2>Choose a vehicle</h2>
-    <p>Choose brand, model and generation. Both top view and 3D use your selection. Sensor data remains unchanged.</p>
-    <div class="vehicle-selectors">
-<label for="chooseBrand">BRAND<select id="chooseBrand"></select></label>
-<label for="chooseModel">MODEL<select id="chooseModel"></select></label>
-<label for="chooseGeneration">GENERATION / YEAR<select id="chooseGeneration"></select></label>
-</div><div class="catalog-caption">Local vehicle catalogue. Shapes are conceptual approximations, not manufacturer CAD models.</div><div id="referenceSnippet" class="reference-snippet" hidden><img id="referenceThumb" alt="Real source photograph" loading="lazy" referrerpolicy="no-referrer"><div><strong>Real vehicle reference</strong><small id="referenceTitle"></small><a id="referenceLink" target="_blank" rel="noopener noreferrer">Photo & license ↗</a></div></div><span class="body-options-title">VEHICLE COLOR</span>
-    <div class="paint-options" role="group" aria-label="Car illustration color">
+  <div class="car-options"><span class="eyebrow">VERIFIED 3D COLLECTION</span><h2>Select your vehicle</h2>
+    <p>Only cars with real, creator-uploaded 3D models are shown here. Tap a car to load its 360° viewer. These are community models, not manufacturer CAD.</p>
+    <div class="real-model-grid" role="group" aria-label="Available 3D models">
+      <button type="button" class="real-model-option" data-realmodel="myvi" aria-pressed="false">
+        <span class="model-line"><strong>Perodua Myvi</strong><span class="model-ready">3D AVAILABLE</span></span>
+        <span class="model-details">Generation not confirmed by creator</span>
+        <span class="model-maker">zairiq-123 · CC BY</span>
+      </button>
+      <button type="button" class="real-model-option" data-realmodel="saga" aria-pressed="false">
+        <span class="model-line"><strong>Proton Saga</strong><span class="model-ready">3D AVAILABLE</span></span>
+        <span class="model-details">1985 · first generation</span>
+        <span class="model-maker">zairiq-123 · CC BY</span>
+      </button>
+    </div>
+    <div class="selected-model-note" role="status" aria-live="polite" id="selectedModelNote">Select a car to open its creator-hosted 3D model.</div>
+    <div class="vehicle-selectors" hidden aria-hidden="true">
+      <label for="chooseBrand">BRAND<select id="chooseBrand" tabindex="-1"></select></label>
+      <label for="chooseModel">MODEL<select id="chooseModel" tabindex="-1"></select></label>
+      <label for="chooseGeneration">GENERATION<select id="chooseGeneration" tabindex="-1"></select></label>
+    </div>
+    <div class="catalog-caption">2 verified 3D sources · all other models are hidden until a suitable licensed 3D model is available.</div>
+    <div id="referenceSnippet" class="reference-snippet" hidden><img id="referenceThumb" alt="Optional car photograph" loading="lazy" referrerpolicy="no-referrer"><div><strong>Reference</strong><small id="referenceTitle"></small><a id="referenceLink" target="_blank" rel="noopener noreferrer">Photo source</a></div></div>
+    <span class="body-options-title" hidden>ILLUSTRATION COLOR</span>
+    <div class="paint-options" role="group" aria-label="Illustrative body color" hidden>
       <button data-carpaint="silver" style="background:#a8b5c2" aria-label="Silver" title="Silver"></button>
       <button data-carpaint="white" style="background:#e5eaf0" aria-label="White" title="White"></button>
       <button data-carpaint="graphite" style="background:#516373" aria-label="Graphite" title="Graphite"></button>
@@ -579,118 +620,11 @@ body.warning-open{overflow:hidden}
 
   // Catalog: current + legacy models in Malaysia, with illustrative generation labels.
   // Profiles are hand-authored approximate geometry, never represented as official CAD.
+  // Strictly selected creator-hosted downloadable CC BY 3D assets.
+  // Myvi generation is unspecified by artist; never expose fabricated Gen1/2/3 choices.
   const vehicleCatalog={
-    'Perodua':{
-      'Myvi':['hatch',[['Gen 1 · 2005–2008','myvi1'],['Gen 1 facelift · 2008–2011','myvi1f'],['Gen 2 · 2011–2015','myvi2'],['Gen 2 facelift · 2015–2017','myvi2f'],['Gen 3 · 2017–2021','myvi3'],['Gen 3 facelift · 2021+','myvi3f']]],
-      'Axia':['hatch',[['Gen 1 · 2014–2022','axia1'],['Gen 2 · 2023+','axia2']]],
-      'Bezza':['sedan',[['2016–2019','bezza'],['Facelift · 2020+','bezza']]],
-      'Alza':['mpv',[['Gen 1 · 2009–2022',''],['Gen 2 · 2022+','']]],
-      'Ativa':['suv',[['2021+','']]],'Aruz':['suv',[['2019+','']]],
-      'Traz':['suv',[['Current','']]],'Kancil':['hatch',[['1994–2009','']]],
-      'Kelisa':['hatch',[['2001–2007','']]],'Viva':['hatch',[['2007–2014','']]],
-      'Kenari':['mpv',[['2000–2009','']]]},
-    'Proton':{
-      'Saga':['sedan',[['Gen 1 · 1985–2008','saga1'],['Gen 2 · 2008–2016','saga2'],['Gen 3 · 2016–2025','saga3'],['New generation · 2025+','saga4']]],
-      'Persona':['sedan',[['1993–2007',''],['2007–2016',''],['2016+','persona']]],
-      'Iriz':['hatch',[['2014–2020',''],['Facelift · 2021+','']]],
-      'S70':['sedan',[['2023–2025',''],['2026+','']]],
-      'X50':['suv',[['2020–2024','x50'],['Facelift · 2025+','x50']]],
-      'X70':['suv',[['2018–2023',''],['2024+','']]],
-      'X90':['suv',[['2023+','']]],'Exora':['mpv',[['2009–2023','']]],
-      'Wira':['sedan',[['1993–2009','']]],'Waja':['sedan',[['2000–2011','']]],
-      'Preve':['sedan',[['2012–2018','']]],'Satria':['hatch',[['1994–2006','']]],
-      'Gen-2':['hatch',[['2004–2012','']]],'e.MAS 7':['suv',[['2025+','']]],'e.MAS 5':['hatch',[['2025+','']]]},
-    'Honda':{
-      'City':['sedan',[['GM2 · 2008–2013',''],['GM6 · 2014–2019',''],['GN · 2020+','city']]],
-      'City Hatchback':['hatch',[['2021+','']]],
-      'Civic':['sedan',[['FD · 2006–2011',''],['FB · 2012–2015',''],['FC · 2016–2021',''],['FE · 2022+','']]],
-      'Jazz':['hatch',[['GE',''],['GK','']]],'Accord':['sedan',[['2013–2019',''],['2020–2023','']]],
-      'HR-V':['suv',[['2015–2021',''],['2022+','']]],
-      'CR-V':['suv',[['2017–2023',''],['2023+','']]],
-      'WR-V':['suv',[['2023+','']]],'BR-V':['suv',[['2017–2020','']]],
-      'Odyssey':['mpv',[['Imported','']]],'Prelude':['coupe',[['Current','']]]},
-    'Toyota':{
-      'Vios':['sedan',[['NCP93 · 2007–2013',''],['NCP150 · 2013–2022',''],['AC100 · 2023+','vios']]],
-      'Yaris':['hatch',[['2019+','']]],'Corolla Altis':['sedan',[['2014–2019',''],['2019+','']]],
-      'Corolla Cross':['suv',[['2021+','']]],'Camry':['sedan',[['2019–2024',''],['2025+','']]],
-      'Hilux':['pickup',[['2005–2015',''],['2015+','']]],'Fortuner':['suv',[['2016+','']]],
-      'Avanza':['mpv',[['2004–2011',''],['2012–2021','']]],'Veloz':['mpv',[['2022+','']]],
-      'Innova':['mpv',[['2017–2023',''],['Zenix','']]],
-      'Alphard':['mpv',[['2015–2023',''],['2023+','']]],
-      'Vellfire':['mpv',[['2015–2023',''],['2023+','']]],
-      'Rush':['suv',[['2018+','']]],'Yaris Cross':['suv',[['Current','']]],'bZ4X':['suv',[['Current','']]]},
-    'Nissan':{
-      'Almera':['sedan',[['N17 · 2012–2020',''],['N18 · 2020+','']]],
-      'Serena':['mpv',[['C26',''],['C27',''],['C28','']]],
-      'Navara':['pickup',[['NP300','']]],'X-Trail':['suv',[['T32','']]],
-      'Teana':['sedan',[['L33','']]],'Grand Livina':['mpv',[['First generation','']]]},
-    'Mazda':{
-      'Mazda2':['hatch',[['2015+','']]],'Mazda3':['sedan',[['BM / BN',''],['BP','']]],
-      'Mazda6':['sedan',[['GJ / GL','']]],'CX-3':['suv',[['2016+','']]],
-      'CX-30':['suv',[['2020+','']]],'CX-5':['suv',[['KE',''],['KF','']]],
-      'CX-8':['suv',[['2019+','']]],'MX-5':['coupe',[['ND','']]]},
-    'Mitsubishi':{
-      'Triton':['pickup',[['2015–2023',''],['2024+','']]],
-      'Xpander':['mpv',[['2020+','']]],'Outlander':['suv',[['2016+','']]],
-      'ASX':['suv',[['2010s','']]],'Pajero Sport':['suv',[['2016+','']]]},
-    'Hyundai':{
-      'i10':['hatch',[['2010s','']]],'Elantra':['sedan',[['AD',''],['CN7','']]],
-      'Kona':['suv',[['Gen 1',''],['Gen 2','']]],'Tucson':['suv',[['TL',''],['NX4','']]],
-      'Staria':['mpv',[['2021+','']]],'Ioniq 5':['suv',[['2022+','']]],
-      'Santa Fe':['suv',[['TM',''],['MX5','']]]},
-    'Kia':{
-      'Picanto':['hatch',[['JA','']]],'Cerato':['sedan',[['YD',''],['BD','']]],
-      'Seltos':['suv',[['2020+','']]],'Sportage':['suv',[['QL',''],['NQ5','']]],
-      'Carnival':['mpv',[['KA4','']]],'Sorento':['suv',[['MQ4','']]]},
-    'BYD':{
-      'Dolphin':['hatch',[['Current','']]],'Atto 3':['suv',[['Current','']]],
-      'Seal':['sedan',[['Current','']]],'M6':['mpv',[['Current','']]],
-      'Sealion 7':['suv',[['Current','']]]},
-    'Tesla':{
-      'Model 3':['sedan',[['Original',''],['Highland','']]],
-      'Model Y':['suv',[['Original',''],['Juniper','']]]},
-    'Chery':{
-      'Omoda 5':['suv',[['Current','']]],'Tiggo 7 Pro':['suv',[['Current','']]],
-      'Tiggo 8 Pro':['suv',[['Current','']]],'Tiggo Cross':['suv',[['Current','']]]},
-    'GWM':{
-      'Ora Good Cat':['hatch',[['Current','']]],'Haval H6':['suv',[['Current','']]],
-      'Tank 300':['suv',[['Current','']]],'Tank 500':['suv',[['Current','']]]},
-    'BMW':{
-      '3 Series':['sedan',[['F30',''],['G20','']]],'5 Series':['sedan',[['F10',''],['G30',''],['G60','']]],
-      'X1':['suv',[['F48',''],['U11','']]],'X3':['suv',[['G01',''],['G45','']]],
-      'X5':['suv',[['G05','']]],'i4':['sedan',[['G26','']]]},
-    'Mercedes-Benz':{
-      'C-Class':['sedan',[['W205',''],['W206','']]],'E-Class':['sedan',[['W213',''],['W214','']]],
-      'A-Class':['sedan',[['W177 / V177','']]],'GLA':['suv',[['H247','']]],
-      'GLC':['suv',[['X253',''],['X254','']]],'GLE':['suv',[['V167','']]]},
-    'Volkswagen':{
-      'Polo':['hatch',[['6R','']]],'Golf':['hatch',[['Mk7',''],['Mk8','']]],
-      'Jetta':['sedan',[['Mk6','']]],'Tiguan':['suv',[['AD1','']]],
-      'Passat':['sedan',[['B8','']]]},
-    'Volvo':{
-      'EX30':['suv',[['Current','']]],'XC40':['suv',[['Current','']]],
-      'XC60':['suv',[['Current','']]],'XC90':['suv',[['Current','']]],
-      'S60':['sedan',[['Current','']]],'S90':['sedan',[['Current','']]]},
-    'Peugeot':{
-      '208':['hatch',[['A9','']]],'2008':['suv',[['P24','']]],
-      '3008':['suv',[['P84',''],['Current','']]],'5008':['suv',[['P87','']]],
-      '408':['sedan',[['Current','']]]},
-    'MG':{
-      'MG4':['hatch',[['Current','']]],'MG5':['sedan',[['Current','']]],
-      'HS':['suv',[['Current','']]],'ZS':['suv',[['Current','']]]},
-    'Subaru':{
-      'XV':['suv',[['GP',''],['GT','']]],'Forester':['suv',[['SJ',''],['SK','']]],
-      'WRX':['sedan',[['VA',''],['VB','']]],'BRZ':['coupe',[['ZC6',''],['ZD8','']]]},
-    'Suzuki':{
-      'Swift':['hatch',[['2010–2017',''],['2017+','']]],
-      'Jimny':['suv',[['JB74','']]],'Vitara':['suv',[['2010s','']]]},
-    'Lexus':{
-      'IS':['sedan',[['XE30','']]],'ES':['sedan',[['XV70','']]],
-      'UX':['suv',[['Current','']]],'NX':['suv',[['AZ10',''],['AZ20','']]],
-      'RX':['suv',[['AL20',''],['ALA10','']]]},
-    'Isuzu':{
-      'D-Max':['pickup',[['2012–2020',''],['2020+','']]],
-      'MU-X':['suv',[['2010s',''],['2021+','']]]}
+    'Perodua':{'Myvi':['hatch',[['Generation unverified','myvi3']]]},
+    'Proton':{'Saga 1985':['sedan',[['1985 · First generation','saga1']]]}
   };
   // Hand-crafted starting geometry for well-known Malaysian shapes (not OEM measurements).
   const genericGeometry={
@@ -793,6 +727,7 @@ body.warning-open{overflow:hidden}
     updateIllustration();
     updateVehicle3D();
     updateMediaReference();
+    setVehicleView('licensed');
   }
   $('chooseBrand').addEventListener('change',()=>{selectedBrand=$('chooseBrand').value;selectedModel='';selectedGen='';setVehicleSelection()});
   $('chooseModel').addEventListener('change',()=>{selectedModel=$('chooseModel').value;selectedGen='';setVehicleSelection()});
@@ -957,9 +892,9 @@ body.warning-open{overflow:hidden}
     $('view2D').setAttribute('aria-pressed',String(!active));$('view3D').setAttribute('aria-pressed',String(active));
     if(active){orbit.yaw=-.48;orbit.pitch=.82;orbit.zoom=1;scheduleCarDraw()}
   }
-  $('view2D').addEventListener('click',()=>setVehicleView('top'));
-  $('view3D').addEventListener('click',()=>setVehicleView('3d'));
-  $('viewPhoto').addEventListener('click',()=>setVehicleView('photo'));
+  $('view2D').addEventListener('click',()=>setVehicleView('licensed'));
+  $('view3D').addEventListener('click',()=>setVehicleView('licensed'));
+  $('viewPhoto').addEventListener('click',()=>setVehicleView('licensed'));
   $('viewLicensed').addEventListener('click',()=>setVehicleView('licensed'));
 
   const activePointers=new Map();
@@ -1053,35 +988,38 @@ body.warning-open{overflow:hidden}
   };
   let realRef=null,licensedReady=false,chosenCreator3D=null,vehicleView='top';
   function updateMediaReference(){
-    realRef=realRefs[vehicleMeta?.profile]||null;
-    chosenCreator3D=vehicleMeta?.model==='Myvi'?reference3DModels.myvi:reference3DModels[vehicleMeta?.profile]||null;
+    const isMyvi=vehicleMeta?.brand==='Perodua'&&vehicleMeta?.model==='Myvi';
+    chosenCreator3D=isMyvi?reference3DModels.myvi:reference3DModels.saga1;
     licensedReady=!!chosenCreator3D;
-    if(chosenCreator3D){
-      $('creator3DDescription').textContent=chosenCreator3D.label;
-      $('creator3DLink').href=chosenCreator3D.source;
-      $('licensedDisclaimer').textContent=chosenCreator3D.accuracy+' Third-party Sketchfab viewer loads only when opened.';
-    }
-    $('referenceSnippet').hidden=!realRef;$('viewPhoto').hidden=!realRef;$('viewLicensed').hidden=!licensedReady;
-    if(realRef){
-      const file=encodeURIComponent(realRef[0]).replace(/%20/g,'_');
-      const image='https://commons.wikimedia.org/wiki/Special:FilePath/'+file+'?width=720';
-      const page='https://commons.wikimedia.org/wiki/File:'+file;
-      $('referenceThumb').src=image;$('realPhoto').src=image;
-      $('referenceTitle').textContent=realRef[1];
-      $('realPhotoCaption').textContent=vehicleMeta.brand+' '+vehicleMeta.model+' · '+vehicleMeta.generation;
-      $('referenceLink').href=page;$('realPhotoLink').href=page;
-      $('referenceThumb').alt='Actual '+vehicleMeta.model+' photo by '+realRef[1];
-      $('realPhoto').alt=$('referenceThumb').alt;
-    }else{$('referenceThumb').removeAttribute('src');$('realPhoto').removeAttribute('src')}
-    if((vehicleView==='photo'&&!realRef)||(vehicleView==='licensed'&&!licensedReady))setVehicleView('3d');
-    // If a different source is selected while a community viewer is open, update it;
-    // otherwise no third-party assets load merely by browsing the model catalog.
-    if(vehicleView==='licensed' && chosenCreator3D && $('licensedFrame').getAttribute('src')!==chosenCreator3D.embed){
+    realRef=null;
+    $('referenceSnippet').hidden=true;
+    $('viewPhoto').hidden=true;
+    $('viewLicensed').hidden=true; // Real 3D is now the sole supported overview view.
+    $('creator3DDescription').textContent=chosenCreator3D.label;
+    $('creator3DLink').href=chosenCreator3D.source;
+    $('licensedDisclaimer').textContent=chosenCreator3D.accuracy+' Creator-hosted Sketchfab model. The original model and author credit are linked above.';
+    $('selectedModelNote').textContent=isMyvi
+      ?'Myvi: real community-made 3D model, but generation is not verified. Do not treat this mesh as a particular Myvi generation.'
+      :'Saga: real community-made 1985 model. The original 3D mesh may take longer to load on older tablets.';
+    document.querySelectorAll('[data-realmodel]').forEach(b=>{
+      const on=b.dataset.realmodel===(isMyvi?'myvi':'saga');
+      b.classList.toggle('selected',on);
+      b.setAttribute('aria-pressed',String(on));
+    });
+    if(vehicleView==='licensed'&&$('licensedFrame').getAttribute('src')!==chosenCreator3D.embed){
       $('licensedFrame').src=chosenCreator3D.embed;
     }
   }
-  function setVehicleView(view){
-    if(view==='photo'&&!realRef||view==='licensed'&&!licensedReady)return;
+  document.querySelectorAll('[data-realmodel]').forEach(button=>button.addEventListener('click',()=>{
+    const isMyvi=button.dataset.realmodel==='myvi';
+    selectedBrand=isMyvi?'Perodua':'Proton';
+    selectedModel=isMyvi?'Myvi':'Saga 1985';
+    selectedGen=isMyvi?'Generation unverified':'1985 · First generation';
+    setVehicleSelection();
+  }));
+    function setVehicleView(view){
+    if(!licensedReady)return;
+    view='licensed';
     vehicleView=view;
     set3DView(view==='3d');
     $('carDrawing').hidden=view!=='top';$('carFront').hidden=view!=='top';
@@ -1098,9 +1036,9 @@ body.warning-open{overflow:hidden}
     $('carDrawing').innerHTML=car;
     document.querySelector('.carpanel .vehicle').innerHTML=car;
     $('carName').textContent=vehicleMeta?vehicleMeta.brand+' '+vehicleMeta.model:shapeData[shape][0];
-    $('carDescription').textContent=vehicleMeta?vehicleMeta.generation+' · '+vehicleMeta.body.toUpperCase():shapeData[shape][1];
-    $('carModelAccuracy').textContent=vehicleMeta?.profile?'MODEL SHAPE / CONCEPT':'GENERIC BODY / CONCEPT';
-    $('carPaint').textContent=paint.toUpperCase();
+    $('carDescription').textContent=vehicleMeta?.brand==='Perodua'?'Real 3D · generation not verified':'1985 · real 3D community model';
+    $('carModelAccuracy').textContent=vehicleMeta?.brand==='Perodua'?'GENERATION UNVERIFIED':'1985 / COMMUNITY 3D';
+    $('carPaint').textContent='CC BY';
     document.querySelectorAll('[data-shape]').forEach(b=>{const active=b.dataset.shape===shape;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
     document.querySelectorAll('[data-carpaint]').forEach(b=>{const active=b.dataset.carpaint===paint;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
   }
