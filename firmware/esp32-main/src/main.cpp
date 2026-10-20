@@ -7,7 +7,12 @@
 #include <TinyGPS++.h>
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
+// Cloud is opt-in. The original sensor/alert firmware builds even before setup.
+#if __has_include("cloud_config.h")
 #include "cloud_config.h"
+#else
+#define CLOUD_UPLINK_ENABLED false
+#endif
 #if CLOUD_UPLINK_ENABLED
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -451,9 +456,30 @@ const char index_html[] PROGMEM = R"PARKSENSE_HTML(
 #if CLOUD_UPLINK_ENABLED
 // Network I/O in a separate FreeRTOS task, never in the main alert-control loop.
 void cloudTelemetryTask(void *ignored) {
+  // HTTPS uplink is deliberately isolated from the physical alert loop.
+  // Always associate on channel 1; NEVER scan or change to the phone hotspot's auto channel.
   configTime(0, 0, "pool.ntp.org", "time.google.com");
+  unsigned long lastAttempt = 0;
+  bool wasConnected = false;
   for (;;) {
-    if (WiFi.status() == WL_CONNECTED && time(nullptr) > 1700000000) {
+    bool connected = WiFi.status() == WL_CONNECTED;
+    if (connected && WiFi.channel() != 1) {
+      Serial.printf("[Cloud] Channel %d is not safe for ESP-NOW pods; dropping cloud Wi-Fi.\n", WiFi.channel());
+      WiFi.disconnect(false, false); // Only disconnect station; keep local AP.
+      esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+      connected = false;
+    }
+    if (connected != wasConnected) {
+      Serial.printf("[Cloud] %s\n", connected ? "Wi-Fi connected on channel 1" : "Wi-Fi disconnected, local alarms active");
+      wasConnected = connected;
+    }
+    // Non-blocking reconnect. Association specifies channel 1 explicitly (not auto-scanning).
+    // A hotspot using channel 6/11/5GHz will NOT join; pods keep their fixed radio channel.
+    if (!connected && (lastAttempt == 0 || millis() - lastAttempt >= 30000UL)) {
+      lastAttempt = millis();
+      WiFi.begin(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 1);
+    }
+    if (connected && time(nullptr) > 1700000000) {
       JsonDocument doc;
       makeTelemetry(doc);
       String body;
@@ -467,11 +493,11 @@ void cloudTelemetryTask(void *ignored) {
         http.addHeader("Authorization", String("Bearer ") + CLOUD_DEVICE_TOKEN);
         http.addHeader("Content-Type", "application/json");
         int status = http.POST(body);
-        if (status != HTTP_CODE_OK) Serial.printf("Cloud uplink result: %d\n", status);
+        if (status != HTTP_CODE_OK) Serial.printf("[Cloud] Telemetry result: %d\n", status);
         http.end();
       }
     }
-    vTaskDelay(pdMS_TO_TICKS(950));
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
 #endif
@@ -503,19 +529,9 @@ void setup() {
   delay(2000);
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 #if CLOUD_UPLINK_ENABLED
-  WiFi.setAutoReconnect(false); // Only associate to the exact radio channel used by pods.
-  WiFi.begin(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD);
-  unsigned long start=millis();
-  while(WiFi.status()!=WL_CONNECTED && millis()-start<11000) delay(100);
-  if(WiFi.status()==WL_CONNECTED && WiFi.channel()!=1){
-    Serial.printf("Refusing cloud Wi-Fi on channel %d; expected channel 1.\n",WiFi.channel());
-    WiFi.disconnect();
-    esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-  }
-  if(WiFi.status()==WL_CONNECTED) Serial.println("Cloud Wi-Fi on channel 1 connected");
-  else Serial.println("Cloud Wi-Fi not connected; local dashboard still available");
+  WiFi.setAutoReconnect(false); // Only the low-priority uplink task retries, channel 1.
+  Serial.println("[Cloud] Enabled. Wi-Fi association restricted to channel 1.");
 #endif
-
   if(esp_now_init()!=ESP_OK){Serial.println("ESP-NOW Init Failed");return;}
   esp_now_register_recv_cb(OnDataRecv);
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){request->send_P(200,"text/html",index_html);});
@@ -525,10 +541,9 @@ void setup() {
   Serial.println("Encoder: speed limit 5-100; encoder press resets to 15 km/h");
   Serial.println("GPIO14 switch: GND=parking alerts ON; OPEN=all alert outputs OFF");
 #if CLOUD_UPLINK_ENABLED
-  if(WiFi.status()==WL_CONNECTED){
-    BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",12288,nullptr,1,nullptr,0);
-    if(ok!=pdPASS) Serial.println("Cloud task could not start");
-  }
+  // Launch after ESP-NOW has initialized. Hotspot may appear later; no restart required.
+  BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",12288,nullptr,1,nullptr,0);
+  if(ok!=pdPASS) Serial.println("[Cloud] Background task could not start");
 #endif
 }
 
