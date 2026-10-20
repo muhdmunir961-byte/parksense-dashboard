@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#edf1f4"><meta name="description" content="ParkSense vehicle monitoring dashboard for GPS speed, 360-degree proximity sensors and ESP32 telemetry."><title>ParkSense | Park Assist</title><style>
+:root{--bg:#f4f5f2;--surface:#fff;--panel:#fff;--panel2:#f5f7f5;--border:#dce2de;--text:#1d2e32;--muted:#67777b;--teal:#276d62;--green:#28765a;--amber:#b87724;--red:#ba4738;--grey:#8a9698;--r:11px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.48 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #82b5a9;outline-offset:3px}
+.shell{display:flex;min-height:100vh}.sidebar{width:232px;flex:none;background:#1e2c30;color:#dfe8e6;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:30px 18px 22px}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 33px;border-bottom:1px solid #3b4b4d}.brandmark{height:38px;width:38px;flex:none;border:1px solid #70827c;border-radius:7px;color:#e1ece8;display:grid;place-items:center;font-size:17px;font-weight:900;letter-spacing:-2px}.brand-title{font-size:16px;font-weight:800;letter-spacing:-.7px;line-height:1.1}.brand-caption{margin-top:6px;color:#aebcb9;font-size:9px;font-weight:700;letter-spacing:1.2px}
+.nav-label{margin:32px 12px 11px;color:#829792;font-size:10px;letter-spacing:1.7px;font-weight:800}.nav{display:grid;gap:4px}.nav a{display:flex;align-items:center;gap:11px;min-height:43px;padding:0 12px;border-radius:7px;color:#acbeb9;font-size:13px;font-weight:600;transition:background .15s}.nav a:hover{background:#304146;color:#fff}.nav a.active{background:#e6efeb;color:#213e3a}.nav svg{width:17px;height:17px;stroke-width:1.8;flex:none}.sidebar-foot{margin-top:auto;border-top:1px solid #3b4b4d;padding:18px 9px 0}.sidebar-foot .micro{color:#829792}.sidebar-foot p{font-size:11px;color:#bac8c3;margin:8px 0 0;line-height:1.7}.version{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#788a86;margin-top:14px}
+.workspace{min-width:0;flex:1}.utilitybar{height:65px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 clamp(20px,3.5vw,53px);border-bottom:1px solid var(--border);background:#fafbf9}.breadcrumb{font-size:12px;color:#788682;font-weight:600}.breadcrumb strong{color:#25383b;font-weight:750}.utility-right{display:flex;align-items:center;gap:16px}.utag{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#6c7a78}.logout{background:transparent;border:1px solid var(--border);padding:7px 12px;border-radius:6px;color:#526560;font-size:11px;font-weight:700}.logout:hover{background:#edf1ef}
+.app{width:min(1400px,100%);margin:0 auto;padding:35px clamp(20px,3.5vw,53px) 35px}.eyebrow,.micro{color:#6f8080;font-size:10px;letter-spacing:1.4px;font-weight:800;text-transform:uppercase}.intro{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:26px}.intro h1{font-size:clamp(27px,3vw,37px);line-height:1.12;letter-spacing:-1.3px;font-weight:760;margin:8px 0 9px}.intro p{margin:0;color:var(--muted);font-size:13px}.intro-right{text-align:right}.timestamp{color:#7d8d8c;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:10px}.outline-button,.solid-button{border:1px solid var(--border);color:#253c3b;border-radius:7px;background:#fff;padding:10px 14px;font-size:12px;font-weight:700;transition:background .15s}.outline-button:hover{background:#edf2ef}.solid-button{background:#23473f;border-color:#23473f;color:#fff}.solid-button:hover{background:#2d5a50}.solid-button:disabled{opacity:.4}
+.statusbar{display:grid;grid-template-columns:1fr 1.2fr 1fr 1.4fr;background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden}.statusitem{min-width:0;padding:14px 18px;display:flex;flex-direction:column;gap:8px;border-right:1px solid var(--border)}.statusitem:last-child{border:0}.statusitem .micro{font-size:9px}.chip{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:750;letter-spacing:.15px;white-space:nowrap}.dot{display:inline-block;flex:none;width:8px;height:8px;background:#8f9c9b;border-radius:50%}.dot.good{background:#317d62}.dot.demo{background:#bd872d}.dot.bad{background:#c05c4f}.statusitem .mono{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:#485c5e;margin-top:1px}
+.cards{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(305px,.78fr);gap:16px;align-items:stretch}.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);min-width:0;overflow:hidden}.panel-inner{padding:22px}.panel-header,.speed-panel-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.panel-title{font-size:14px;font-weight:750;letter-spacing:-.2px}.subnote{font-size:12px;color:#7b898a;line-height:1.45;margin:6px 0 0}.small-index{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:#92a19b}
+.carpanel{grid-column:1;grid-row:1;min-height:455px}.car-head{padding:23px 23px 0}.car-arena{position:relative;height:352px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:0 8px;background-image:linear-gradient(#e9edeb 1px,transparent 1px),linear-gradient(90deg,#e9edeb 1px,transparent 1px);background-size:38px 38px;background-position:center center;clip-path:inset(2px 0 2px)}.radar-lines{position:absolute;width:276px;height:276px;border:1px solid #d4dcda;border-radius:50%;pointer-events:none}.radar-lines:before{content:"";position:absolute;inset:43px;border:1px dashed #d1dad7;border-radius:50%}.radar-lines:after{content:"";position:absolute;top:50%;left:-110px;width:496px;border-top:1px dashed #d2dcd9;z-index:0}.vehicle{position:absolute;width:95px;height:208px;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1}.vehicle svg{display:block;height:100%;width:100%;filter:drop-shadow(0 8px 7px #16303224)}.sensor-pill{position:absolute;min-width:92px;max-width:100px;text-align:center;border:1px solid #cbd7d1;background:#fff;border-radius:7px;padding:7px 8px;z-index:2;transition:border-color .2s,background .2s}.sensor-pill .dir{color:#8b9b97;font-size:9px;letter-spacing:1.1px;font-weight:800}.sensor-pill .reading{color:#25393c;margin-top:2px;font:700 17px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:-.7px}.sensor-pill .reading small{font:10px Inter,system-ui,sans-serif;letter-spacing:0;color:#859590}.sensor-pill.alert-red{border-color:#c45a4c;background:#fff6f3}.sensor-pill.alert-yellow{border-color:#d2a058;background:#fffaf0}.sensor-pill.alert-offline{opacity:.65;background:#f0f1f0;border-style:dashed}.sensor-pill[data-dir="F"]{top:9px;left:50%;transform:translateX(-50%)}.sensor-pill[data-dir="R"]{bottom:7px;left:50%;transform:translateX(-50%)}.sensor-pill[data-dir="L"]{left:max(6px,calc(50% - 190px));top:50%;transform:translateY(-50%)}.sensor-pill[data-dir="Rt"]{right:max(6px,calc(50% - 190px));top:50%;transform:translateY(-50%)}.vehicle-caption{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding:14px 23px}.legend{display:flex;align-items:center;gap:5px;font-size:10px;color:#70817e}.legend i{display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--green)}.legend i.warning{background:var(--amber)}.legend i.danger{background:var(--red)}.legend-group{display:flex;gap:14px;flex-wrap:wrap}
+.speedpanel{grid-column:2;grid-row:1;display:flex;min-height:455px}.speedpanel>.panel-inner{display:flex;flex-direction:column;flex:1}.live-pin{font-size:9px;background:#eff4f0;color:#507363;padding:5px 7px;border:1px solid #dce8df;border-radius:4px;font-weight:800;letter-spacing:.65px}.speed-number{margin:24px 0 0;font:650 clamp(82px,8vw,129px)/1.1 ui-monospace,SFMono-Regular,"Roboto Mono",Consolas,monospace;letter-spacing:-9px;font-variant-numeric:tabular-nums}.speed-number.warm{color:var(--amber)}.speed-number.hot{color:var(--red)}.speed-unit{font-size:11px;color:#687e7b;font-weight:780;letter-spacing:1.6px;margin:0 0 33px}.speed-meter{height:8px;border-radius:2px;background:#e6ece8;position:relative;overflow:hidden}.speed-fill{height:100%;width:0%;background:var(--teal);transition:width .3s,background .25s}.meter-ticks{display:flex;justify-content:space-between;font:10px ui-monospace,Consolas,monospace;color:#95a39f;margin-top:8px}.speedfooter{margin-top:auto;border-top:1px solid var(--border);padding-top:18px;display:flex;justify-content:space-between;align-items:center;gap:9px}.limit-num{font:700 32px ui-monospace,Consolas,monospace;letter-spacing:-1.3px;margin-top:6px}.limit-num small{font:11px system-ui;color:#7c8b87;letter-spacing:0}.control-row{display:flex;gap:4px}.square-button{height:32px;min-width:32px;border:1px solid #d5dfda;background:white;color:#2c4442;border-radius:5px;font-size:17px;font-weight:800}.square-button:hover{background:#edf4f0}.control-hint{margin-top:11px;font-size:10px;color:#8b9b98;line-height:1.55}
+.zonepanel{grid-column:1/-1}.zones-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;border-bottom:1px solid var(--border)}.zones-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.zone-row{display:flex;align-items:center;gap:10px;min-width:0;padding:21px 17px;border-right:1px solid var(--border)}.zone-row:last-child{border-right:0}.zone-icon{flex:none;width:30px;height:30px;border-radius:4px;border:1px solid #d2ded7;display:grid;place-items:center;font:800 11px ui-monospace,Consolas,monospace;color:#44635b}.zone-label{font-size:11px;font-weight:750;white-space:nowrap}.zone-status{font-size:10px;color:#8a9695;margin-top:4px;white-space:nowrap}.zone-right{margin-left:auto;text-align:right;white-space:nowrap}.zone-dist{font:750 16px ui-monospace,Consolas,monospace;letter-spacing:-.5px}.zone-dist small{font:10px system-ui;color:#9aa7a3}.state-tag{font-size:9px;letter-spacing:.65px;font-weight:800;color:var(--green);margin-top:4px}.state-tag.warn{color:var(--amber)}.state-tag.danger{color:var(--red)}.state-tag.offline{color:var(--grey)}.zones-note{padding:12px 22px;background:#fafbf9;border-top:1px solid var(--border);font-size:10px;color:#8c9d97;line-height:1.5}
+.below{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.alert-box{border-left:3px solid #4b9677}.alert-box.warn{border-color:var(--amber)}.alert-box.danger{border-color:var(--red)}.alert-content{display:flex;gap:14px;align-items:flex-start;margin-top:20px}.alert-symbol{height:39px;width:39px;flex:none;border:1px solid #d4e6da;color:#357758;background:#eff7f0;border-radius:6px;display:grid;place-items:center;font-size:21px;font-weight:900}.alert-box.warn .alert-symbol{color:var(--amber);background:#fffaef;border-color:#e8d8b5}.alert-box.danger .alert-symbol{color:var(--red);background:#fff3ef;border-color:#ead2c9}.alert-headline{font-size:17px;letter-spacing:-.4px;font-weight:750}.alert-description{font-size:12px;color:#798a85;margin-top:7px;max-width:440px;line-height:1.5}.events-list{margin-top:16px;display:flex;flex-direction:column;gap:9px;max-height:145px;overflow:auto}.event{display:flex;gap:10px;justify-content:space-between;font-size:11px;border-bottom:1px solid #eef1ee;padding-bottom:8px;color:#5c6d69}.event:last-child{border:0}.event time{font:10px ui-monospace,Consolas,monospace;color:#9aa8a2;white-space:nowrap}
+.demo-tools{margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;align-items:center}.demo-tools .subnote{margin-top:3px}.demo-actions{display:flex;gap:5px;flex-wrap:wrap}.scenario{padding:9px 11px;background:#fff;border:1px solid #d9e1db;color:#50635d;border-radius:5px;font-size:11px;font-weight:700}.scenario:hover{background:#edf3ee}.scenario.is-active{color:#fff;background:#274b43;border-color:#274b43}
+.connectpanel{margin-top:16px}.connect-layout{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-top:16px}.field{flex:1;min-width:230px}.field label{display:block;margin-bottom:7px;color:#80908a;font-size:10px;letter-spacing:1.1px;font-weight:800}.url-input{height:43px;padding:11px 12px;width:100%;border:1px solid #d6dfd9;border-radius:6px;background:#fcfdfc;color:#334947;font:12px ui-monospace,Consolas,monospace;outline:0}.url-input:focus{border-color:#509786}.connect-actions{display:flex;gap:7px}.connect-helper{border-top:1px solid var(--border);margin-top:18px;padding-top:14px;color:#87948e;line-height:1.65;font-size:11px}.tiny-foot{margin-top:27px;color:#96a5a0;font-size:10px;line-height:1.6;letter-spacing:.1px}
+@media(max-width:1290px){.sidebar{width:208px}.statusbar{grid-template-columns:repeat(2,1fr)}.statusitem:nth-child(2){border-right:0}.statusitem:nth-child(1),.statusitem:nth-child(2){border-bottom:1px solid var(--border)}.zones-list{grid-template-columns:repeat(2,minmax(0,1fr))}.zone-row:nth-child(2){border-right:0}.zone-row:nth-child(1),.zone-row:nth-child(2){border-bottom:1px solid var(--border)}}
+@media(max-width:970px){.sidebar{display:none}.cards{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)}.app{padding-top:28px}.statusbar{grid-template-columns:repeat(4,1fr)}.statusitem:nth-child(1),.statusitem:nth-child(2){border-bottom:0}.statusitem:nth-child(2){border-right:1px solid var(--border)}.zone-row{padding:19px 15px}}
+@media(max-width:690px){.utilitybar{height:57px;padding:0 16px}.utility-right .utag{display:none}.app{padding:26px 14px 30px}.intro-right{text-align:left}.intro{margin-bottom:18px}.intro h1{font-size:28px}.statusbar{grid-template-columns:repeat(2,1fr)}.statusitem{padding:13px 12px}.statusitem:nth-child(1),.statusitem:nth-child(2){border-bottom:1px solid var(--border)}.statusitem:nth-child(2){border-right:0}.statusitem .chip{font-size:11px}.statusitem:nth-child(3){border-right:1px solid var(--border)}.cards{grid-template-columns:1fr}.carpanel{grid-column:1;grid-row:2;min-height:auto}.speedpanel{grid-column:1;grid-row:1;min-height:342px}.speed-number{font-size:86px;margin-top:15px}.speed-unit{margin-bottom:20px}.speedfooter{margin-top:20px}.zonepanel{grid-column:1;grid-row:3}.zones-list{grid-template-columns:1fr}.zone-row{border-right:0!important;border-bottom:1px solid var(--border)!important;padding:16px 19px}.zone-row:last-child{border-bottom:0!important}.car-arena{height:335px}.sensor-pill[data-dir="L"]{left:max(5px,calc(50% - 177px))}.sensor-pill[data-dir="Rt"]{right:max(5px,calc(50% - 177px))}.below{grid-template-columns:1fr}.demo-tools{align-items:start}.demo-actions{width:100%}.scenario{flex:1}.connect-actions{width:100%}.connect-actions button{flex:1}.tiny-foot{margin-top:19px}}
+@media(max-width:380px){.sensor-pill{min-width:76px;padding:6px 5px}.sensor-pill .reading{font-size:14px}.car-arena{height:315px}.vehicle{height:192px;width:87px}.radar-lines{width:236px;height:236px}.zone-row{padding:15px 9px}.zone-dist{font-size:13px}.zone-status{font-size:9px}.zone-icon{display:none}.demo-actions{display:grid;grid-template-columns:1fr 1fr}.statusitem{padding:12px 9px}.chip{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* e.MAS Flyme-inspired layout / original ParkSense design, no Proton assets */
+:root{--bg:#edf1f4;--surface:#fff;--panel:#fff;--panel2:#f5f7fa;--border:#e1e6eb;--text:#232e38;--muted:#778590;--teal:#3f75ae;--green:#3f7c61;--amber:#b88135;--red:#bf5349;--grey:#98a4ad;--r:10px}
+body{background:var(--bg);color:var(--text);font-size:14px}
+.shell{align-items:stretch}
+.sidebar{width:86px;padding:22px 13px 24px;background:#f8fafc;border-right:1px solid #dde3e9;color:#596a79;align-items:center}
+.brand{width:100%;border:0;padding:0 0 28px;justify-content:center}
+.brandmark{border:0;background:#2d6098;color:#fff!important;border-radius:12px;width:47px;height:47px;box-shadow:none;font-size:20px}
+.brandmark span{color:#d6e6f5!important}
+.brand>div:last-child,.nav-label,.sidebar-foot{display:none}
+.nav{width:100%;gap:10px}
+.nav a{width:58px;height:56px;min-height:56px;display:grid;place-items:center;padding:0;border-radius:11px;font-size:0;color:#6b7887;background:transparent;margin:auto}
+.nav a:hover{background:#e8edf3;color:#23598f}.nav a.active{background:#ddeaf8;color:#2f6eae}
+.nav svg{width:22px;height:22px;stroke-width:1.75}
+.utilitybar{height:65px;padding:0 clamp(26px,3.4vw,53px);background:#fff;border-bottom:1px solid #e1e7ed}
+.breadcrumb{font-size:13px;color:#8794a0}.breadcrumb strong{color:#2b3b4b}
+.utag{color:#83929e;font-size:10px;font-weight:650;letter-spacing:.9px}
+.logout{border:0;background:#f3f6fa;border-radius:8px;padding:10px 14px;color:#647487}
+.logout:hover{background:#e7eef6}
+.app{max-width:1510px;padding:32px clamp(26px,3.4vw,53px) 48px}
+.intro{margin-bottom:21px}.intro h1{font-size:clamp(31px,3.3vw,42px);font-weight:640;letter-spacing:-1.7px;margin:7px 0 8px}
+.intro p{font-size:13px;color:#8b97a2}.eyebrow,.micro{color:#8d9ca7;letter-spacing:1.25px;font-weight:730}
+.intro-right .timestamp{color:#92a0aa}.outline-button{background:#fff;border-color:#dfe5ea;border-radius:8px}.outline-button:hover{background:#f5f8fa}
+.statusbar{margin-bottom:15px;border:1px solid #e2e8ed;background:#fff;box-shadow:none;border-radius:11px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.statusitem{padding:14px 19px;gap:6px;border-right-color:#e8edf0}.statusitem .micro{font-size:9px;color:#98a4ac}
+.chip{font-size:11px;font-weight:680;letter-spacing:0}.dot{width:7px;height:7px}.dot.good{background:#3d9776}.dot.demo{background:#cba354}.dot.bad{background:#c87966}
+.statusitem .mono{font:12px ui-monospace,Consolas,monospace;color:#53677b}
+.cards{grid-template-columns:minmax(0,1.32fr) minmax(320px,.78fr);gap:15px}
+.panel{border:1px solid #e0e5eb;border-radius:11px;background:#fff;box-shadow:0 2px 4px #1f344505}
+.panel-header,.speed-panel-top{gap:10px}.panel-title{font-size:15px;font-weight:650;letter-spacing:-.25px}.subnote{color:#8f9da9;font-size:12px}
+.carpanel{grid-column:1;grid-row:1;min-height:479px;background:#f9fbfd}
+.car-head{padding:22px 26px 0}.car-arena{height:367px;background:none;margin:0 10px;clip-path:none;isolation:isolate}
+.car-arena:before{content:"";position:absolute;z-index:-1;width:66%;height:75%;background:#f0f3f6;border:1px solid #edf0f3;border-radius:50%/46%;top:13%;left:17%}
+.car-arena:after{content:"";position:absolute;left:50%;top:15%;height:70%;border-left:1px dashed #d3dce4;z-index:-1}
+.radar-lines{width:300px;height:300px;border-color:#dce6ee;border-style:solid;z-index:-1}
+.radar-lines:before{inset:44px;border-color:#dde6ed}.radar-lines:after{border-color:#dce6ed;left:-50px;width:400px}
+.vehicle{height:229px;width:110px;filter:none}
+.vehicle svg{filter:drop-shadow(0 11px 14px #64788a21)}
+.sensor-pill{border:1px solid #e0e6ed;background:#fff;border-radius:8px;min-width:100px;padding:8px 10px;box-shadow:0 2px 8px #152e4010}
+.sensor-pill .dir{color:#8797a6;font-size:9px;font-weight:690}.sensor-pill .reading{font-size:18px;color:#22384c}
+.sensor-pill[data-dir="F"]{top:8px}.sensor-pill[data-dir="R"]{bottom:4px}
+.sensor-pill[data-dir="L"]{left:max(8px,calc(50% - 203px))}.sensor-pill[data-dir="Rt"]{right:max(8px,calc(50% - 203px))}
+.sensor-pill.alert-yellow{border-color:#ddb878;background:#fffaf1}.sensor-pill.alert-red{border-color:#d98579;background:#fff5f3}.sensor-pill.alert-offline{background:#f4f6f7}
+.vehicle-caption{border-top-color:#e4eaf0;padding:14px 25px;background:#fff}.legend i{background:#3b8c6d}.legend i.warning{background:#cb9c52}.legend i.danger{background:#cc6458}.legend{font-size:10px}
+.speedpanel{grid-column:2;grid-row:1;min-height:479px}.speedpanel>.panel-inner{padding:25px 26px 23px}
+.live-pin{background:#edf4fd;color:#3772b6;border:0;border-radius:5px;font-size:10px;font-weight:700;padding:6px 9px}
+.speed-number{color:#233242;margin-top:34px;font:520 clamp(96px,9.4vw,150px)/1.05 system-ui,Arial,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-10px}
+.speed-unit{color:#8695a2;font-size:12px;letter-spacing:1px;margin-bottom:36px}
+.speed-meter{height:6px;background:#e8edf2;border-radius:5px}.speed-fill{background:#3f7fba;border-radius:5px}
+.speedfooter{border-top-color:#e7ebef;padding-top:24px}.limit-num{font:600 36px/1.15 system-ui,sans-serif;letter-spacing:-1.3px;color:#2a4155}
+.limit-num small{color:#95a3af}.square-button{background:#f6f8fb;border:1px solid #e1e7ed;border-radius:7px;height:36px;min-width:36px;color:#526779}.square-button:hover{background:#e5eef7}
+.control-hint{color:#97a4ae}.zonepanel{grid-column:1/-1}
+.zones-top{padding:22px 25px}.zones-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.zone-row{border-right-color:#e6eaef;padding:24px 19px}
+.zone-icon{border:0;background:#edf4fa;color:#3874ab;border-radius:8px;width:32px;height:32px;font-size:12px}
+.zone-label{font-size:12px;font-weight:660;color:#2b3b48}.zone-status{color:#9aa7af}.zone-dist{font-size:18px;color:#273c4d}
+.state-tag{font-weight:740;letter-spacing:.5px}.zones-note{background:#fbfcfd;color:#929fa9;border-top-color:#e6ebef}
+.below{gap:15px;margin-top:15px}.below .panel-inner{padding:22px 24px}
+.alert-box{border-left:3px solid #56a587}.alert-symbol{background:#eef8f3;color:#3e8a66;border:0;border-radius:9px}
+.alert-headline{font-size:17px;font-weight:650}.alert-description{color:#83919b}.events-list .event{border-color:#e9eef2;color:#657585}
+.demo-tools{margin-top:15px;border-color:#e0e5eb;border-radius:11px;background:#fff;padding:19px 24px}
+.scenario{border-radius:7px;border-color:#e2e8ed;background:#f8fafb;color:#657789}.scenario:hover{background:#edf4fb}.scenario.is-active{background:#3d7cbb;border-color:#3d7cbb;color:#fff}
+.connectpanel{margin-top:15px}.connectpanel .panel-inner{padding:23px 25px}.url-input{background:#f8fafc;border-color:#dfe7ed;color:#526577}.url-input:focus{border-color:#4d87c4}.solid-button{background:#3778ba;border-color:#3778ba}.solid-button:hover{background:#2f659e}
+.tiny-foot{color:#9eabb5;font-size:10px;margin:25px 0 4px}
+.vehicle-dock{position:sticky;bottom:0;z-index:20;height:72px;background:#fdfefeef;backdrop-filter:blur(12px);border-top:1px solid #dfe6ed;display:flex;align-items:center;justify-content:center;gap:clamp(12px,3.2vw,62px);padding:8px 28px;box-shadow:0 -3px 13px #2a40550a}
+.dock-entry{display:flex;align-items:center;gap:9px;color:#758595;font-size:12px;font-weight:650;padding:12px 16px;border-radius:9px;white-space:nowrap;transition:background .2s,color .2s}
+.dock-entry:hover{background:#eaf1f7;color:#2569a8}.dock-entry.current{color:#2f72b5;background:#edf5fc}.dock-entry svg{height:19px;width:19px}
+.dock-clock{margin-left:auto;display:flex;align-items:end;flex-direction:column;line-height:1.1;color:#334b5f;font-size:20px;font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:-.4px;min-width:74px}.dock-clock small{font-size:8px;color:#9aa6b0;letter-spacing:1px;margin-top:4px}
+@media(max-width:1290px){.sidebar{width:78px}.statusbar{grid-template-columns:repeat(4,1fr)}.statusitem:nth-child(1),.statusitem:nth-child(2){border-bottom:0}.statusitem:nth-child(2){border-right:1px solid var(--border)}.zones-list{grid-template-columns:repeat(4,minmax(0,1fr))}.zone-row:nth-child(1),.zone-row:nth-child(2){border-bottom:0}.zone-row:nth-child(2){border-right:1px solid var(--border)}.zone-row{padding:20px 12px}.zone-icon{width:27px;height:27px}}
+@media(max-width:1120px){.zone-row{flex-wrap:wrap}.zone-right{margin-left:0;width:100%;text-align:left;padding-left:42px}.speed-number{font-size:110px}.car-arena{height:345px}.sensor-pill[data-dir="L"]{left:8px}.sensor-pill[data-dir="Rt"]{right:8px}}
+@media(max-width:970px){.sidebar{display:none}.app{padding-top:27px}.statusbar{grid-template-columns:repeat(4,minmax(0,1fr))}.cards{grid-template-columns:minmax(0,1.2fr) minmax(275px,.8fr)}.carpanel,.speedpanel{min-height:450px}.speed-number{font-size:100px}.dock-entry{padding:11px 12px}}
+@media(max-width:690px){.utilitybar{height:58px;padding:0 18px}.app{padding:25px 13px 31px}.intro h1{font-size:34px}.intro{margin-bottom:18px}.intro-right{width:100%;display:flex;align-items:center;justify-content:space-between}.statusbar{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:12px}.statusitem{padding:12px 14px}.statusitem:nth-child(1),.statusitem:nth-child(2){border-bottom:1px solid var(--border)}.statusitem:nth-child(2){border-right:0}.statusitem:nth-child(3){border-right:1px solid var(--border)}.cards{grid-template-columns:1fr;gap:12px}.carpanel{grid-column:1;grid-row:1;min-height:430px}.car-head{padding:19px 19px 0}.car-arena{height:335px}.vehicle{height:203px;width:92px}.radar-lines{width:250px;height:250px}.radar-lines:after{left:-45px;width:340px}.sensor-pill{min-width:80px;padding:7px 6px}.sensor-pill .reading{font-size:15px}.sensor-pill[data-dir="F"]{top:6px}.sensor-pill[data-dir="R"]{bottom:7px}.sensor-pill[data-dir="L"]{left:4px}.sensor-pill[data-dir="Rt"]{right:4px}.vehicle-caption{padding:14px 18px}.speedpanel{grid-column:1;grid-row:2;min-height:350px}.speedpanel>.panel-inner{padding:22px}.speed-number{font-size:95px;margin:14px 0 0}.speed-unit{margin-bottom:24px}.speedfooter{margin-top:26px}.zonepanel{grid-column:1;grid-row:3}.zones-list{grid-template-columns:repeat(2,minmax(0,1fr))}.zone-row{padding:15px 13px;flex-wrap:nowrap;border-right:1px solid var(--border)}.zone-row:nth-child(2){border-right:0}.zone-row:nth-child(1),.zone-row:nth-child(2){border-bottom:1px solid var(--border)}.zone-right{width:auto;text-align:right;padding-left:0;margin-left:auto}.zone-label{font-size:11px}.zone-dist{font-size:15px}.zone-icon{width:29px;height:29px}.below{grid-template-columns:1fr}.demo-actions{display:flex}.vehicle-dock{height:68px;padding:6px 8px;gap:2px;justify-content:space-evenly}.dock-entry{flex:1;display:flex;flex-direction:column;gap:2px;padding:7px 4px;font-size:9px;border-radius:7px}.dock-entry svg{width:18px;height:18px}.dock-clock{display:none}}
+@media(max-width:420px){.zone-row{padding:14px 8px}.zone-label{font-size:10px}.zone-icon{width:24px;height:24px}.zone-status{font-size:9px}.zone-dist{font-size:14px}.sensor-pill[data-dir="L"]{left:0}.sensor-pill[data-dir="Rt"]{right:0}.vehicle{height:189px;width:85px}.radar-lines{width:226px;height:226px}.car-arena{height:315px}.carpanel{min-height:405px}.legend-group{gap:8px}.legend{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.vehicle-dock{backdrop-filter:none}}
+
+</style></head><body><div class="shell">
+  <aside class="sidebar" aria-label="Primary navigation">
+    <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
+    <div class="nav-label">WORKSPACE</div>
+    <nav class="nav">
+      <a class="active" href="#overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>Overview</a>
+      <a href="#sensorDiagnostics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-6 5 12 3-6h5"/></svg>Sensor diagnostics</a>
+      <a href="#eventSection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M4 5h16M4 12h16M4 19h12"/></svg>Event log</a>
+      <a href="#connectionSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M5 5l2.5 2.5M19 5l-2.5 2.5M5 19l2.5-2.5M19 19l-2.5-2.5"/></svg>Connection</a>
+    </nav>
+    <div class="sidebar-foot"><div class="micro">DEVICE PLATFORM</div><p>ESP32 main controller<br>4 × ESP-NOW sensor pods<br>GPS / PIR / Ultrasonic</p><div class="version">PARKSENSE / FYP-02</div></div>
+  </aside>
+  <div class="workspace">
+    <div class="utilitybar"><div class="breadcrumb">ParkSense <span style="color:#b1beb8;margin:0 9px">/</span> <strong>Monitor</strong></div><div class="utility-right"><span class="utag">ESP32 TELEMETRY</span><button class="logout" id="logoutBtn" type="button">Sign out</button></div></div>
+    <div class="app" id="overview">
+      <section class="intro"><div><div class="eyebrow">PARKSENSE / VEHICLE SYSTEM</div><h1>Park assist</h1><p>Intelligent parking awareness · GPS speed · four-zone proximity</p></div><div class="intro-right"><div class="timestamp" id="lastUpdate">Last update — demonstration</div><button class="outline-button" type="button" id="toConnection">Connection settings ↗</button></div></section>
+      <div class="statusbar" aria-label="System connection status">
+        <div class="statusitem"><span class="micro">Display mode</span><span class="chip"><i class="dot demo" id="modeDot"></i><span id="modeText">DEMO MODE</span></span></div>
+        <div class="statusitem"><span class="micro">Controller connection</span><span class="chip"><i class="dot bad" id="connectionDot"></i><span id="connectionText">DEVICE NOT CONNECTED</span></span></div>
+        <div class="statusitem"><span class="micro">Parking switch</span><span class="chip"><i class="dot bad" id="parkingDot"></i><span id="parkingText">PARKING MODE —</span></span></div>
+        <div class="statusitem"><span class="micro">Vehicle speed source</span><span class="mono">GPS RECEIVER / UART2</span></div>
+      </div>
+      <main class="cards">
+        <section class="panel speedpanel" aria-label="Vehicle GPS speed">
+          <div class="panel-inner"><div class="speed-panel-top"><div class="panel-title">GPS speed</div><span class="live-pin" id="readingType">SIMULATED</span></div>
+            <div class="speed-number" id="speedValue">08</div><div class="speed-unit">KM / H · GPS</div>
+            <div class="speed-meter" role="meter" aria-label="Vehicle speed relative to 100 km/h" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8" id="speedMeter"><div class="speed-fill" id="speedFill" style="width:8%"></div></div>
+            <div class="meter-ticks"><span>0</span><span id="midTick">50</span><span>100 km/h</span></div>
+            <div class="speedfooter"><div><div class="micro">Speed alert threshold</div><div class="limit-num"><span id="limitValue">15</span> <small>km/h</small></div></div><div class="control-row"><button id="limitMinus" class="square-button" title="Decrease threshold" aria-label="Decrease threshold">−</button><button id="limitPlus" class="square-button" title="Increase threshold" aria-label="Increase threshold">+</button><button id="limitReset" class="square-button" title="Reset to 15 km/h" aria-label="Reset threshold">↺</button></div></div>
+            <div class="control-hint" id="controlHint">Demo controls active. On the device, set the threshold with the rotary encoder.</div>
+          </div>
+        </section>
+        <section class="panel carpanel" aria-label="Four-direction surround view">
+          <div class="car-head"><div class="panel-header"><div class="panel-title">Vehicle surroundings</div><span class="small-index">01—04 / SENSOR POSITIONS</span></div><p class="subnote">Four-zone proximity monitoring</p></div>
+          <div class="car-arena"><div class="radar-lines"></div>
+            <div class="vehicle" aria-hidden="true"><svg viewBox="0 0 120 250" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="43" width="15" height="41" rx="5" fill="#293944"/><rect x="103" y="43" width="15" height="41" rx="5" fill="#293944"/><rect x="2" y="167" width="15" height="41" rx="5" fill="#293944"/><rect x="103" y="167" width="15" height="41" rx="5" fill="#293944"/>
+              <path d="M39 8Q60-1 81 8L98 31Q105 42 104 57L103 208Q103 229 86 239Q60 247 34 239Q17 229 17 208L16 57Q15 42 22 31Z" fill="#a7b5c0" stroke="#697d89" stroke-width="2"/>
+              <path d="M31 24Q60 11 89 24L94 61H26Z" fill="#536875" stroke="#b9c7ce" stroke-width="1.4"/>
+              <path d="M27 73H93V172H27Z" fill="#849ba9" stroke="#8ba0ab" stroke-width="1"/>
+              <path d="M29 185H91L87 226Q60 235 33 226Z" fill="#536875" stroke="#b9c7ce" stroke-width="1.4"/>
+              <path d="M23 36h11M86 36h11" stroke="#f6f0e4" stroke-width="4" stroke-linecap="round"/>
+              <path d="M23 218h12M85 218h12" stroke="#d75348" stroke-width="4" stroke-linecap="round"/>
+              <path d="M26 73h67M26 172h67" stroke="#718997" stroke-width="1" opacity=".8"/>
+            </svg></div>
+            <div class="sensor-pill" data-dir="F" id="pillF"><div class="dir">FRONT</div><div class="reading" id="pillFValue">85 <small>cm</small></div></div>
+            <div class="sensor-pill" data-dir="R" id="pillR"><div class="dir">REAR</div><div class="reading" id="pillRValue">120 <small>cm</small></div></div>
+            <div class="sensor-pill" data-dir="L" id="pillL"><div class="dir">LEFT</div><div class="reading" id="pillLValue">64 <small>cm</small></div></div>
+            <div class="sensor-pill" data-dir="Rt" id="pillRt"><div class="dir">RIGHT</div><div class="reading" id="pillRtValue">95 <small>cm</small></div></div>
+          </div>
+          <div class="vehicle-caption"><div class="legend-group"><span class="legend"><i></i> Normal</span><span class="legend"><i class="warning"></i> Caution &lt;55 cm</span><span class="legend"><i class="danger"></i> Danger &lt;35 cm</span></div><span class="small-index">FRONT ↑</span></div>
+        </section>
+        <section class="panel zonepanel" id="sensorDiagnostics" aria-label="Individual ESP-NOW sensor status">
+          <div class="zones-top"><div><div class="panel-title">Proximity sensors</div><div class="subnote">ESP-NOW linked ultrasonic sensors and motion detection</div></div><span class="micro" id="activePods">4 / 4 PODS</span></div>
+          <div class="zones-list">
+            <div class="zone-row" id="zoneF"><div class="zone-icon">F</div><div><div class="zone-label">Front sensor</div><div class="zone-status" id="motionF">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distF">85 <small>cm</small></div><div class="state-tag" id="statusF">CLEAR</div></div></div>
+            <div class="zone-row" id="zoneR"><div class="zone-icon">B</div><div><div class="zone-label">Rear sensor</div><div class="zone-status" id="motionR">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distR">120 <small>cm</small></div><div class="state-tag" id="statusR">CLEAR</div></div></div>
+            <div class="zone-row" id="zoneL"><div class="zone-icon">L</div><div><div class="zone-label">Left sensor</div><div class="zone-status" id="motionL">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distL">64 <small>cm</small></div><div class="state-tag" id="statusL">CLEAR</div></div></div>
+            <div class="zone-row" id="zoneRt"><div class="zone-icon">R</div><div><div class="zone-label">Right sensor</div><div class="zone-status" id="motionRt">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distRt">95 <small>cm</small></div><div class="state-tag" id="statusRt">CLEAR</div></div></div>
+          </div>
+          <div class="zones-note">Critical &lt;15 cm · Danger 15–34 cm · Caution 35–54 cm · No packet for ~2 seconds = pod offline.</div>
+        </section>
+      </main>
+      <section class="below" id="eventSection">
+        <article class="panel alert-box" id="alertBox"><div class="panel-inner"><div class="panel-header"><div class="panel-title">System assessment</div><span class="micro">LIVE STATE</span></div><div class="alert-content"><div class="alert-symbol" id="alertSymbol">✓</div><div><div class="alert-headline" id="alertHeadline">Normal operation</div><div class="alert-description" id="alertDescription">Vehicle speed and detected distances are within the monitored thresholds.</div></div></div></div></article>
+        <article class="panel"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Activity log</div><span class="micro">LATEST EVENTS</span></div><div class="events-list" id="eventList" aria-live="polite"><div class="event"><span>Preview started in demo mode</span><time>—</time></div></div></div></article>
+      </section>
+      <section class="demo-tools" aria-label="Dashboard testing controls"><div><div class="panel-title">Preview scenarios</div><div class="subnote">Simulate sensor conditions — no commands sent to the controller.</div></div><div class="demo-actions"><button class="scenario is-active" type="button" data-profile="normal" aria-pressed="true">Normal</button><button class="scenario" type="button" data-profile="caution" aria-pressed="false">Caution</button><button class="scenario" type="button" data-profile="danger" aria-pressed="false">Critical</button><button class="scenario" type="button" data-profile="overspeed" aria-pressed="false">Overspeed</button></div></section>
+      <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Connection settings</div><span class="micro">COOLIFY RELAY</span></div><p class="subnote">Live telemetry is streamed from the ESP32 via the Coolify server. Dashboard connects to the same host.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="wss://your-domain/ws"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Connect live</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">The ESP32 must send HTTPS telemetry to Coolify over a Wi-Fi connection. For ESP-NOW sensor pods, maintain 2.4 GHz channel 1 as configured in firmware.</div></div></section>
+      <footer class="tiny-foot">PARKSENSE / ENGINEERING PROTOTYPE · ESP32 + ESP-NOW + GPS + ULTRASONIC + PIR · Monitoring and alerts only. No physical throttle or brake control is implemented.</footer>
+    </div>
+    <nav class="vehicle-dock" aria-label="Vehicle system quick navigation">
+      <a class="dock-entry current" href="#overview" title="Vehicle overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 10 12 3l9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span>Home</span></a>
+      <a class="dock-entry" href="#sensorDiagnostics" title="Proximity sensors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M8 8a6 6 0 0 0 0 8m8-8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14m14-14a10 10 0 0 1 0 14"/></svg><span>Sensors</span></a>
+      <a class="dock-entry" href="#eventSection" title="Activity events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h4l3-6 4 12 3-6h4"/></svg><span>Alerts</span></a>
+      <a class="dock-entry" href="#connectionSettings" title="Cloud connection settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg><span>Settings</span></a>
+      <div class="dock-clock" aria-label="Local time"><span id="systemClock">--:--</span><small>LOCAL TIME</small></div>
+    </nav>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const zones=[['F','distF','humanF'],['R','distR','humanR'],['L','distL','humanL'],['Rt','distRefR','humanRefR']];
+  const DEFAULT_HOST='192.168.4.1';
+  let mode='demo', socket=null, wantsConnection=false, reconnectTimer=null, lastTelemetry=0, remoteControl=false, lastAlert='', demoStep=0, lastSensorState={};
+  let telemetry={systemEnabled:false,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};
+  let eventLog=[];
+  let demoProfile='normal';
+  if(location.protocol==='http:' && location.hostname && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
+    $('wsUrl').value='ws://'+location.host+'/ws';
+  } else if(location.protocol==='https:' && location.hostname && location.hostname!=='localhost') {
+    $('wsUrl').value='wss://'+location.host+'/ws';
+  }
+  function stamp(){return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
+  function log(message){if(eventLog[0] && eventLog[0].message===message)return;eventLog.unshift({message,time:stamp()});eventLog=eventLog.slice(0,5);$('eventList').replaceChildren(...eventLog.map(x=>{let e=document.createElement('div'),s=document.createElement('span'),t=document.createElement('time');e.className='event';s.textContent=x.message;t.textContent=x.time;e.append(s,t);return e}));}
+  function setMode(next,status){mode=next;$('modeText').textContent=next==='demo'?'DEMO MODE':'LIVE MODE';$('modeDot').className='dot '+(next==='demo'?'demo':'good');$('readingType').textContent=next==='demo'?'SIMULATED':'ESP32 FEED';$('connectionDot').className='dot '+(status==='connected'?'good':'bad');$('connectionText').textContent=next==='demo'?'DEVICE NOT CONNECTED':status==='connected'?'DEVICE CONNECTED':status==='connecting'?'CONNECTING…':'DEVICE DISCONNECTED';$('lastUpdate').textContent=next==='demo'?'Last update — demonstration':'Last update — awaiting data';updateControls();}
+  function updateControls(){let enabled=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN);['limitMinus','limitPlus','limitReset'].forEach(id=>$(id).disabled=!enabled);$('controlHint').textContent=mode==='demo'?'Demo controls only — simulated threshold.':remoteControl?'Remote control enabled':'Live dashboard is read-only. Adjust speed alert threshold with the ESP32 rotary encoder.';}
+  function severity(dist,human){if(dist===-1||!Number.isFinite(dist)||dist<2)return'offline';if(dist<35)return'danger';if(dist<55||human===1)return'warn';return'good';}
+  function formatDistance(dist){if(dist===-1||!Number.isFinite(dist)||dist<2)return 'OFFLINE';if(dist>=395)return '≥395 <small>cm</small>';return String(Math.round(dist))+' <small>cm</small>';}
+  function render(){
+    let speed=Number(telemetry.maxSpeed)||0,limit=Number(telemetry.speedLimit)||15;
+    speed=Math.max(0,Math.min(999,speed));limit=Math.max(5,Math.min(100,limit));
+    $('parkingText').textContent=mode==='demo'?'PARKING DEMO':telemetry.systemEnabled===true?'PARKING ON':'PARKING OFF';
+    $('parkingDot').className='dot '+(mode==='demo'?'demo':telemetry.systemEnabled===true?'good':'bad');
+    $('speedValue').textContent=String(Math.round(speed)).padStart(2,'0');$('limitValue').textContent=limit;
+    $('speedFill').style.width=Math.min(100,(speed/100)*100)+'%';$('speedMeter').setAttribute('aria-valuenow',Math.min(100,speed));
+    $('speedValue').className='speed-number'+(speed>limit?' hot':speed>limit*.8?' warm':'');
+    $('speedFill').style.background=speed>limit?'var(--red)':speed>limit*.8?'var(--amber)':'var(--teal)';
+    let active=0,min=400,humanFound=false,anyDanger=false,anyWarn=false;
+    zones.forEach(([key,distKey,humanKey])=>{
+      const dist=Number(telemetry[distKey]),human=Number(telemetry[humanKey])===1?1:0, sev=severity(dist,human);
+      if(sev!=='offline')active++;
+      if(dist>=2&&dist<=400&&sev!=='offline')min=Math.min(min,dist);
+      if(human)humanFound=true;if(sev==='danger')anyDanger=true;if(sev==='warn')anyWarn=true;
+      const label=sev==='offline'?'OFFLINE':human?'MOTION DETECTED':dist>=395?'OUT OF RANGE':dist<15?'CRITICAL':dist<35?'DANGER':dist<55?'CAUTION':'CLEAR';
+      const pill=$('pill'+key);pill.className='sensor-pill'+(sev==='danger'?' alert-red':sev==='warn'?' alert-yellow':sev==='offline'?' alert-offline':'');
+      $('pill'+key+'Value').innerHTML=formatDistance(dist);$('dist'+key).innerHTML=formatDistance(dist);
+      $('motion'+key).textContent=sev==='offline'?'No pod telemetry':human?'PIR: motion detected':'PIR: no movement';
+      const tag=$('status'+key);tag.textContent=label;tag.className='state-tag'+(sev==='offline'?' offline':sev==='danger'?' danger':sev==='warn'?' warn':'');
+      if(lastSensorState[key]&&lastSensorState[key]!==label&&(human||sev==='danger'||sev==='offline')&&mode==='live')log((key==='Rt'?'RIGHT':key==='F'?'FRONT':key==='R'?'REAR':'LEFT')+' sensor: '+label.toLowerCase());
+      lastSensorState[key]=label;
+    });
+    $('activePods').textContent=active+' / 4 PODS';
+    let headline='Normal operation',message='Vehicle speed and detected distances are within the monitored thresholds.',tone='',symbol='✓';
+    if(mode==='live' && telemetry.systemEnabled!==true){headline='Parking mode OFF';message='GPIO14 switch is OFF: all physical LED and buzzer outputs are disabled. Live sensor monitoring continues.';tone='warn';symbol='!';}
+    else if(active===0){headline='No sensor signal';message='No ESP-NOW pod data is available. Check sensor power and communications.';tone='warn';symbol='!';}
+    else if(min<15){headline='Immediate obstacle alert';message='A sensor detects an object under 15 cm. Solid red LED and continuous buzzer.';tone='danger';symbol='!';}
+    else if(speed>limit){headline='Speed limit exceeded';message='Vehicle speed is above the '+limit+' km/h warning threshold.';tone='danger';symbol='!';}
+    else if(min<35){headline='Obstacle very close';message='Detected object is 15–34 cm away. Intermittent red warning.';tone='danger';symbol='!';}
+    else if(min<55){headline='Approaching obstacle';message='Detected object is 35–54 cm away. Yellow caution zone.';tone='warn';symbol='!';}
+    else if(humanFound){headline='Motion detected';message='A PIR sensor has detected movement near the vehicle.';tone='warn';symbol='!';}
+    $('alertBox').className='panel alert-box'+(tone?' '+tone:'');$('alertSymbol').textContent=symbol;$('alertHeadline').textContent=headline;$('alertDescription').textContent=message;
+    if(headline!==lastAlert){lastAlert=headline;log((mode==='demo'?'[Demo] ':'')+headline);}
+  }
+  function parseData(payload){
+    if(!payload||typeof payload!=='object'||!('distF'in payload)||!('maxSpeed'in payload))return;
+    telemetry={...telemetry,...payload};remoteControl=payload.remoteControl===true;
+    lastTelemetry=Date.now();$('lastUpdate').textContent='Last update — '+stamp();updateControls();render();
+  }
+  function clearConnection(){wantsConnection=false;clearTimeout(reconnectTimer);if(socket){let old=socket;socket=null;old.onclose=null;old.onmessage=null;old.onerror=null;try{old.close()}catch(e){}}}
+  function startDemo(){clearConnection();remoteControl=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('demo','disconnected');log('Switched to simulation');render();}
+  function connect(){
+    const url=$('wsUrl').value.trim();
+    if(!/^wss?:\/\/[a-zA-Z0-9.\-\[\]:]+(?:\/[^\s]*)?$/.test(url)){$('connectHelp').textContent='Enter a valid ws:// or wss:// WebSocket address.';return;}
+    if(new URL(url).host!==location.host){$('connectHelp').textContent='For security, connect only to this Coolify server.';return;}
+    if(location.protocol==='https:'&&url.startsWith('ws://')){$('connectHelp').textContent='Use the Coolify WSS relay on this domain; insecure ws:// is blocked by HTTPS.';return;}
+    clearConnection();wantsConnection=true;remoteControl=false;lastTelemetry=0;telemetry={systemEnabled:false,maxSpeed:0,speedLimit:15,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('live','connecting');render();$('connectHelp').textContent='Connecting to secure relay. ESP32 needs to post HTTPS telemetry over its internet-connected Wi-Fi.';
+    openSocket();
+  }
+  function openSocket(){
+    if(!wantsConnection)return;
+    const url=$('wsUrl').value.trim();let candidate;
+    try{candidate=new WebSocket(url);}catch(e){setMode('live','disconnected');$('connectHelp').textContent='Invalid connection: '+e.message;return;}
+    socket=candidate;
+    candidate.onopen=()=>{if(candidate!==socket)return;setMode('live','connecting');$('connectHelp').textContent='Connected to Coolify relay — waiting for ESP32 telemetry.';log('Connected to secure relay; waiting for ESP32');};
+    candidate.onmessage=event=>{if(candidate!==socket)return;try{const msg=JSON.parse(event.data);
+      if(msg.type==='telemetry'){setMode('live','connected');$('connectHelp').textContent='Live ESP32 telemetry is connected through Coolify.';parseData(msg.data);}
+      else if(msg.type==='status'){
+        if(!msg.deviceOnline){remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
+      } else if(msg.type==='error'){$('connectHelp').textContent=msg.message||'Server rejected command';}
+    }catch(e){console.warn('Invalid relay message:',e)}};
+    candidate.onerror=()=>{if(candidate===socket)$('connectHelp').textContent='Unable to reach the Coolify relay. Check your public HTTPS domain and session.';};
+    candidate.onclose=event=>{if(candidate!==socket)return;if(event.code===4401){location.href='/login';return;}socket=null;remoteControl=false;setMode('live','disconnected');telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};render();log('ESP32 connection lost — retrying');if(wantsConnection)reconnectTimer=setTimeout(openSocket,2500);};
+  }
+  function changeLimit(delta,reset){
+    const current=Number(telemetry.speedLimit)||15;let next=reset?15:Math.max(5,Math.min(100,current+delta));
+    if(mode==='demo'){telemetry.speedLimit=next;render();return;}
+    if(socket&&socket.readyState===WebSocket.OPEN&&remoteControl){socket.send(JSON.stringify({cmd:'setSpeedLimit',value:next}));}
+  }
+  function setActiveScenario(){document.querySelectorAll('[data-profile]').forEach(button=>{const selected=button.dataset.profile===demoProfile;button.classList.toggle('is-active',selected);button.setAttribute('aria-pressed',String(selected));});}
+  function setScenario(profile){
+    if(mode!=='demo')startDemo();
+    demoProfile=profile;setActiveScenario();
+    const options={normal:{maxSpeed:8,distF:85,humanF:0},caution:{maxSpeed:7,distF:43,humanF:0},danger:{maxSpeed:6,distF:11,humanF:1},overspeed:{maxSpeed:27,distF:95,humanF:0}};
+    const values=options[profile]||options.normal;
+    telemetry={...telemetry,distR:120,distL:64,distRefR:95,humanR:0,humanL:0,humanRefR:0,...values};
+    log('Demo scenario: '+(profile==='caution'?'Caution zone':profile==='danger'?'Critical obstacle':profile==='overspeed'?'Over speed limit':'Normal operation'));
+    render();
+  }
+  document.querySelectorAll('[data-profile]').forEach(button=>button.addEventListener('click',()=>setScenario(button.dataset.profile)));
+  $('logoutBtn').addEventListener('click',async()=>{try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'});}catch(e){} location.href='/login';});
+  $('connectBtn').addEventListener('click',connect);
+  $('demoBtn').addEventListener('click',startDemo);
+  $('toConnection').addEventListener('click',()=>$('connectionSettings').scrollIntoView({behavior:'smooth',block:'center'}));
+  $('limitMinus').addEventListener('click',()=>changeLimit(-1,false));$('limitPlus').addEventListener('click',()=>changeLimit(1,false));$('limitReset').addEventListener('click',()=>changeLimit(0,true));
+  setInterval(()=>{
+    if(mode==='demo'){
+      demoStep++;
+      const t=demoStep;
+      if(demoProfile==='normal'){
+        telemetry.maxSpeed=Math.max(0,Math.round(8+3*Math.sin(t*.4)));
+        telemetry.distF=Math.round(85+5*Math.sin(t*.33));
+        telemetry.distR=Math.round(122+8*Math.sin(t*.2));
+        telemetry.distL=Math.round(65+8*Math.sin(t*.25));
+        telemetry.distRefR=Math.round(94+9*Math.cos(t*.21));
+        telemetry.humanF=0;
+      }else if(demoProfile==='caution'){
+        telemetry.maxSpeed=7;telemetry.distF=43;telemetry.humanF=0;
+      }else if(demoProfile==='danger'){
+        telemetry.maxSpeed=6;telemetry.distF=11;telemetry.humanF=1;
+      }else if(demoProfile==='overspeed'){
+        telemetry.maxSpeed=27;telemetry.distF=95;telemetry.humanF=0;
+      }
+      $('lastUpdate').textContent='Simulated update · '+stamp();render();
+    }else if(lastTelemetry&&Date.now()-lastTelemetry>5500){
+      if($('connectionText').textContent==='DEVICE CONNECTED'){
+        $('lastUpdate').textContent='No recent telemetry received';
+        setMode('live','disconnected');
+        telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};render();
+        // The WebSocket can remain open while the ESP32 has stopped sending telemetry.
+      }
+    }
+  },1000);
+  function updateSystemClock(){const clock=$('systemClock');if(clock)clock.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
+  updateSystemClock();setInterval(updateSystemClock,15000);
+  setMode('demo','disconnected');setActiveScenario();render();
+  // Coolify serves the dashboard and relay at the same origin (works on HTTPS).
+  if(location.protocol==='http:' || location.protocol==='https:') {
+    $('wsUrl').value=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws';
+    connect();
+  } else {
+    $('wsUrl').value='';
+    $('connectHelp').textContent='Local preview is running in demo mode. Once deployed, the secure relay address is filled in automatically.';
+  }
+})();
+</script></body></html>
