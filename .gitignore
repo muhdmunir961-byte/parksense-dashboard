@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+firmware/esp32-main/include/cloud_secrets.h
+.pio/
+
+# Local ESP32 Wi-Fi SSID/password and bearer token
+firmware/esp32-main/include/cloud_config.h
