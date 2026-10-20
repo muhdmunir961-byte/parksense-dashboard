@@ -21,7 +21,7 @@ test('Real-world media references have explicit credit controls and only load by
   for(const id of ['referenceThumb','referenceLink','realPhoto','realPhotoLink','photoPane','viewPhoto','viewLicensed','licensedPane','licensedFrame','creator3DLink']){
     assert.match(html,new RegExp('id="'+id+'"'),'missing '+id);
   }
-  assert.match(html,/Wikimedia Commons/);
+  assert.match(html,/commons.wikimedia.org/);
   assert.match(html,/CC BY-SA 4\.0/);
   assert.match(html,/NoAI \(embed only\)/);
   assert.match(html,/if\(view==='licensed'/);
