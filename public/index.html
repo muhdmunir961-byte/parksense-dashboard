@@ -148,6 +148,39 @@ body.warning-open{overflow:hidden}
 @media(max-width:680px){.safety-ribbon{grid-template-columns:1fr;padding:14px 15px;gap:11px}.safety-ribbon .sr-actions{justify-content:start}.safety-ribbon .sr-action-hint{text-align:left}.safety-ribbon .sr-title{font-size:17px}.hmi-audio{flex-direction:column;align-items:start;padding:15px}.hmi-audio-actions{width:100%}.hmi-audio-actions .hmi-btn{flex:1}.io-header{align-items:start;flex-direction:column;gap:3px}.io-item{padding:11px 12px}.warning-dialog .wd-inner{padding:20px}.warning-dialog h2{font-size:21px}.warning-dialog .wd-actions{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){.safety-ribbon,.io-led{transition:none}}
 
+
+/* ParkSense - OEM-inspired multi-view instrument layout */
+.hmi-view[hidden]{display:none!important}body{background:#f3f5f6}
+.sidebar{background:#fafbfc;border-right:1px solid #dee5eb}.nav a.active,.vehicle-dock a.current{background:#e5eef7;color:#275e89}
+.intro h1{font-size:clamp(28px,3vw,37px);font-weight:660;letter-spacing:-1.3px}
+.safety-ribbon.normal{background:#fff}.safety-ribbon{border-radius:9px}
+.hmi-lead{margin:0 0 18px}.hmi-lead h2{font-size:26px;letter-spacing:-.8px;font-weight:660;margin:4px 0}.hmi-lead p{font-size:12px;color:#8494a0;margin:0}
+.vehicle-overview{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:15px}
+.car-preview,.car-options{background:#fff;border:1px solid #dfe5ea;border-radius:10px;overflow:hidden;min-width:0}
+.car-preview{background:#f0f3f5;display:flex;flex-direction:column;min-height:460px}
+.car-preview .preview-top,.car-preview .preview-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:17px 21px}
+.car-preview .preview-top{font:750 9px ui-monospace,monospace;letter-spacing:.9px;color:#8697a3}
+.car-preview .preview-bottom{border-top:1px solid #dfe6eb;background:#fafbfc}
+.car-preview h2{font-size:21px;font-weight:660;letter-spacing:-.5px;margin:0}.car-preview .preview-bottom small{font-size:10px;color:#8c99a4}
+.car-stage{flex:1;min-height:290px;display:flex;align-items:center;justify-content:center;position:relative;isolation:isolate;overflow:hidden}
+.car-stage:before{content:"";position:absolute;width:276px;height:276px;border:1px solid #d5dfe6;border-radius:50%;z-index:-1}
+.car-stage svg{width:150px;height:280px;filter:drop-shadow(0 12px 9px #253f5429)}
+.car-stage .front{position:absolute;left:21px;bottom:18px;font:750 10px ui-monospace,monospace;color:#8d9daa}
+.car-options{padding:25px 23px;display:flex;flex-direction:column}
+.car-options h2{font-size:23px;font-weight:660;letter-spacing:-.8px;margin:5px 0 5px}.car-options>p{font-size:12px;line-height:1.65;color:#80919d;margin:0}
+.body-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:21px 0}
+.body-options button{background:#fff;border:1px solid #dee5eb;border-radius:7px;min-width:0;min-height:67px;padding:7px 3px;color:#748696;font-size:11px;font-weight:750;cursor:pointer}
+.body-options button.selected{background:#eef5fa;color:#275f8d;border-color:#4c86b6;box-shadow:inset 0 0 0 1px #4c86b6}
+.paint-options{display:flex;align-items:center;gap:10px;margin:11px 0 20px}.paint-options button{width:28px;height:28px;border:1px solid #aab9c5;border-radius:50%;cursor:pointer}.paint-options button.selected{outline:2px solid #3979ab;outline-offset:3px}
+.body-options-title{font-size:9px;font-weight:800;letter-spacing:1px;color:#8295a2}
+.vehicle-facts{display:grid;grid-template-columns:1fr 1fr;margin-top:auto;border-top:1px solid #e6ebef}
+.vehicle-facts>div{padding:13px 0}.vehicle-facts>div:nth-child(even){padding-left:13px}.vehicle-facts>div:nth-child(odd){border-right:1px solid #e6ebef}.vehicle-facts>div:nth-child(-n+2){border-bottom:1px solid #e6ebef}
+.vehicle-facts small{display:block;color:#8e9ba7;font-size:9px;letter-spacing:.8px;font-weight:800}.vehicle-facts strong{font:650 22px ui-monospace,Consolas,monospace;color:#2c4a61}
+.vehicle-open{display:flex;justify-content:space-between;margin-top:18px;padding:12px 15px;border-radius:7px;border:1px solid #316b9c;background:#316b9c;color:#fff;font-weight:750;font-size:12px;cursor:pointer}
+#view-diagnostics .below{margin-top:0}#view-settings .hmi-audio{margin-top:0}
+@media(max-width:990px){.vehicle-overview{grid-template-columns:1fr}.car-preview{min-height:360px}.car-stage{min-height:230px}.car-stage svg{height:230px}}
+@media(max-width:690px){.car-preview{min-height:315px}.car-stage{min-height:205px}.car-stage svg{height:205px}.car-stage:before{height:220px;width:220px}.car-options{padding:19px 16px}.car-options h2{font-size:21px}.vehicle-facts strong{font-size:19px}.body-options{margin:17px 0}.car-preview .preview-top,.car-preview .preview-bottom{padding:13px 16px}}
+
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -169,7 +202,30 @@ body.warning-open{overflow:hidden}
         <div><div class="sr-eyebrow" id="ribbonLevel">SYSTEM MONITOR</div><div class="sr-title" id="ribbonTitle">Connecting to controller</div><div class="sr-copy" id="ribbonCopy">Live warning status appears here when a sensor or speed threshold is triggered.</div></div>
         <div class="sr-actions"><button class="hmi-btn blue" type="button" id="openWarningBtn" hidden>View warning</button><button class="hmi-btn" type="button" id="dismissWarningBtn" disabled>Acknowledge / Cancel warning</button><div class="sr-action-hint" id="ackState">Web notification only · hardware alarms remain active</div></div>
       </section>
-      <div class="statusbar" aria-label="System connection status">
+      <section class="vehicle-overview" aria-label="Car profile">
+  <div class="car-preview">
+    <div class="preview-top"><span>VEHICLE / TOP VIEW</span><span id="vehicleModeLabel">VISUAL PROFILE</span></div>
+    <div class="car-stage"><div id="carDrawing" aria-hidden="true"></div><span class="front">FRONT ↑</span></div>
+    <div class="preview-bottom"><div><h2 id="carName">SUV</h2><small id="carDescription">Generic body style</small></div><small id="carPaint">SILVER</small></div>
+  </div>
+  <div class="car-options"><span class="eyebrow">VEHICLE OVERVIEW</span><h2>Choose a vehicle</h2>
+    <p>Change the car illustration without affecting any live sensor or ESP32 settings.</p>
+    <div class="body-options" role="group" aria-label="Body style">
+      <button data-shape="sedan" aria-pressed="false">SEDAN</button><button data-shape="hatch" aria-pressed="false">HATCH</button>
+      <button data-shape="suv" aria-pressed="false">SUV</button><button data-shape="mpv" aria-pressed="false">MPV</button>
+    </div>
+    <span class="body-options-title">VEHICLE COLOR</span>
+    <div class="paint-options" role="group" aria-label="Car illustration color">
+      <button data-carpaint="silver" style="background:#a8b5c2" aria-label="Silver" title="Silver"></button>
+      <button data-carpaint="white" style="background:#e5eaf0" aria-label="White" title="White"></button>
+      <button data-carpaint="graphite" style="background:#516373" aria-label="Graphite" title="Graphite"></button>
+      <button data-carpaint="blue" style="background:#467da8" aria-label="Blue" title="Blue"></button>
+    </div>
+    <div class="vehicle-facts">
+      <div><small>GPS SPEED</small><strong id="carSpeed">—</strong></div><div><small>SPEED LIMIT</small><strong id="carLimit">15</strong></div>
+      <div><small>NEAREST OBJECT</small><strong id="carNearest">—</strong></div><div><small>PARKING MODE</small><strong id="carParking">—</strong></div>
+    </div><button id="openParkingView" class="vehicle-open" type="button">Open parking assist <span>↗</span></button>
+  </div></section><div class="statusbar" aria-label="System connection status">
         <div class="statusitem"><span class="micro">Display mode</span><span class="chip"><i class="dot demo" id="modeDot"></i><span id="modeText">DEMO MODE</span></span></div>
         <div class="statusitem"><span class="micro">Controller connection</span><span class="chip"><i class="dot bad" id="connectionDot"></i><span id="connectionText">DEVICE NOT CONNECTED</span></span></div>
         <div class="statusitem"><span class="micro">Parking switch</span><span class="chip"><i class="dot bad" id="parkingDot"></i><span id="parkingText">PARKING MODE —</span></span></div>
@@ -428,6 +484,83 @@ body.warning-open{overflow:hidden}
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lastBrowserBeep=Date.now()});
   setInterval(browserSoundTick,1150);
 
+
+  // Multipage client-side navigation: websocket remains connected across views.
+  const pages={overview:['Vehicle overview','Choose vehicle shape and monitor live conditions.'],parking:['Parking assist','Four-zone ultrasonics and GPS speed.'],diagnostics:['Diagnostics','Warnings and diagnostic events.'],settings:['Settings','Browser sound and live connection.']};
+  const wrapper=$('overview'),viewNodes={};
+  Object.keys(pages).forEach(key=>{
+    const section=document.createElement('section');section.className='hmi-view';section.id='view-'+key;section.hidden=key!=='overview';
+    wrapper.insertBefore(section,wrapper.querySelector('footer'));viewNodes[key]=section;
+  });
+  const pageLead=(n,title,note)=>{
+    const div=document.createElement('div');div.className='hmi-lead';
+    div.innerHTML='<div class="eyebrow">'+n+'</div><h2>'+title+'</h2><p>'+note+'</p>';return div;
+  };
+  viewNodes.overview.append(wrapper.querySelector('.statusbar'),wrapper.querySelector('.vehicle-overview'));
+  viewNodes.parking.append(pageLead('PARKING / 02','Surroundings','Speed, position and proximity; no camera system is present.'),wrapper.querySelector('.cards'));
+  viewNodes.diagnostics.append(pageLead('DIAGNOSTICS / 03','System diagnostics','LED and buzzer estimates, active warnings and events.'),wrapper.querySelector('.io-panel'),wrapper.querySelector('.below'),wrapper.querySelector('.demo-tools'));
+  viewNodes.settings.append(pageLead('SETTINGS / 04','Preferences','Browser alerts and Coolify telemetry relay.'),wrapper.querySelector('.hmi-audio'),wrapper.querySelector('.connectpanel'));
+  const icons={overview:'<path d="M3 12 12 5l9 7v8H3z"/><path d="M9 20v-6h6v6"/>',parking:'<rect x="7" y="4" width="10" height="16" rx="4"/><path d="M4 9c-2 2-2 4 0 6m16-6c2 2 2 4 0 6"/>',diagnostics:'<path d="M3 12h4l3-6 4 12 3-6h4"/>',settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/>'};
+  const nav=(key,dock)=>'<a href="#'+key+'" data-section="'+key+'" class="'+(dock?'dock-entry':'')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">'+icons[key]+'</svg><span>'+pages[key][0].replace('Vehicle overview','Overview').replace('Parking assist','Parking')+'</span></a>';
+  document.querySelector('.sidebar .nav').innerHTML=Object.keys(pages).map(k=>nav(k,false)).join('');
+  document.querySelector('.vehicle-dock').innerHTML=Object.keys(pages).map(k=>nav(k,true)).join('')+'<div class="dock-clock"><span id="systemClock">--:--</span><small>LOCAL TIME</small></div>';
+  function navigate(key){
+    key=Object.hasOwn(pages,key)?key:'overview';
+    Object.entries(viewNodes).forEach(([name,section])=>section.hidden=name!==key);
+    document.querySelectorAll('[data-section]').forEach(link=>{
+      const active=link.dataset.section===key;link.classList.toggle('active',active);link.classList.toggle('current',active);
+      if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+    });
+    document.querySelector('.intro h1').textContent=pages[key][0];
+    document.querySelector('.intro p').textContent=pages[key][1];
+    document.querySelector('.breadcrumb strong').textContent=pages[key][0];
+    window.scrollTo(0,0);
+  }
+  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
+  navigate(location.hash.slice(1));
+  $('openParkingView').addEventListener('click',()=>{location.hash='parking';navigate('parking')});
+  const shapeData={
+    sedan:['Sedan','Long rear deck',44,136,91,238],
+    hatch:['Hatchback','Compact urban shape',37,143,103,227],
+    suv:['SUV','Wide utility vehicle',31,149,86,248],
+    mpv:['MPV','Extended people carrier',28,152,76,253]
+  };
+  const paintData={silver:'#a8b5c2',white:'#e5eaf0',graphite:'#516373',blue:'#467da8'};
+  const preference=(key,options,fallback)=>{try{const value=localStorage.getItem(key);return Object.hasOwn(options,value)?value:fallback}catch{return fallback}};
+  let shape=preference('ps-car-shape',shapeData,'suv'),paint=preference('ps-car-paint',paintData,'silver');
+  function carSvg(){
+    const [name,desc,left,right,wind,rear]=shapeData[shape],color=paintData[paint];
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 340" role="img" aria-label="'+name+' silhouette">'+
+      '<rect x="17" y="66" width="18" height="48" rx="6" fill="#273640"/><rect x="145" y="66" width="18" height="48" rx="6" fill="#273640"/>'+
+      '<rect x="17" y="235" width="18" height="48" rx="6" fill="#273640"/><rect x="145" y="235" width="18" height="48" rx="6" fill="#273640"/>'+
+      '<path d="M'+(left+21)+' 25Q90 10 '+(right-21)+' 25L'+(right-5)+' 67L'+right+' 260Q'+right+' 300 120 315Q90 325 60 315Q'+left+' 300 '+left+' 260L'+(left+5)+' 67Z" fill="'+color+'" stroke="#748696" stroke-width="2"/>'+
+      '<path d="M56 '+wind+' Q90 '+(wind-10)+' 124 '+wind+' L119 '+(wind+38)+' H61Z" fill="#516b7b" stroke="#bdcbd5" stroke-width="2"/>'+
+      '<rect x="57" y="'+(wind+51)+'" width="66" height="'+Math.max(25,rear-wind-66)+'" rx="7" fill="'+color+'" stroke="#8199a8" stroke-width="1.2"/>'+
+      '<path d="M58 '+rear+' H122L124 '+(rear+35)+'Q90 '+(rear+48)+' 56 '+(rear+35)+'Z" fill="#516b7b" stroke="#bdcbd5" stroke-width="2"/>'+
+      '<path d="M40 58h17M123 58h17" stroke="#fff3dc" stroke-width="6" stroke-linecap="round"/><path d="M40 291h17M123 291h17" stroke="#c95950" stroke-width="6" stroke-linecap="round"/></svg>';
+  }
+  function updateIllustration(){
+    const car=carSvg();
+    $('carDrawing').innerHTML=car;
+    document.querySelector('.carpanel .vehicle').innerHTML=car;
+    $('carName').textContent=shapeData[shape][0];
+    $('carDescription').textContent=shapeData[shape][1];
+    $('carPaint').textContent=paint.toUpperCase();
+    document.querySelectorAll('[data-shape]').forEach(b=>{const active=b.dataset.shape===shape;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
+    document.querySelectorAll('[data-carpaint]').forEach(b=>{const active=b.dataset.carpaint===paint;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active))});
+  }
+  document.querySelectorAll('[data-shape]').forEach(b=>b.addEventListener('click',()=>{shape=b.dataset.shape;try{localStorage.setItem('ps-car-shape',shape)}catch{}updateIllustration()}));
+  document.querySelectorAll('[data-carpaint]').forEach(b=>b.addEventListener('click',()=>{paint=b.dataset.carpaint;try{localStorage.setItem('ps-car-paint',paint)}catch{}updateIllustration()}));
+  updateIllustration();
+  function updateCarOverview(){
+    const ds=zones.map(z=>Number(telemetry[z[1]])).filter(v=>Number.isFinite(v)&&v>=2&&v<=400);
+    $('carSpeed').textContent=String(Math.max(0,Number(telemetry.maxSpeed)||0))+' km/h';
+    $('carLimit').textContent=String(telemetry.speedLimit||15)+' km/h';
+    $('carNearest').textContent=ds.length?Math.min(...ds)+' cm':'OFFLINE';
+    $('carParking').textContent=telemetry.systemEnabled?'ON':'OFF';
+    $('vehicleModeLabel').textContent=mode==='demo'?'DEMO DATA':'COOLIFY LIVE';
+  }
+
   function render(){
     let speed=Number(telemetry.maxSpeed)||0,limit=Number(telemetry.speedLimit)||15;
     speed=Math.max(0,Math.min(999,speed));limit=Math.max(5,Math.min(100,limit));
@@ -463,6 +596,7 @@ body.warning-open{overflow:hidden}
     else if(humanFound){headline='Motion detected';message='A PIR sensor has detected movement near the vehicle.';tone='warn';symbol='!';}
     $('alertBox').className='panel alert-box'+(tone?' '+tone:'');$('alertSymbol').textContent=symbol;$('alertHeadline').textContent=headline;$('alertDescription').textContent=message;
     syncWarningDisplay({headline,message,tone,speed,limit,min,humanFound,active});
+    updateCarOverview();
     if(headline!==lastAlert){lastAlert=headline;log((mode==='demo'?'[Demo] ':'')+headline);}
   }
   function parseData(payload){
@@ -514,7 +648,7 @@ body.warning-open{overflow:hidden}
   $('logoutBtn').addEventListener('click',async()=>{try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'});}catch(e){} location.href='/login';});
   $('connectBtn').addEventListener('click',connect);
   $('demoBtn').addEventListener('click',startDemo);
-  $('toConnection').addEventListener('click',()=>$('connectionSettings').scrollIntoView({behavior:'smooth',block:'center'}));
+  $('toConnection').addEventListener('click',()=>{location.hash='settings';navigate('settings');});
   $('limitMinus').addEventListener('click',()=>changeLimit(-1,false));$('limitPlus').addEventListener('click',()=>changeLimit(1,false));$('limitReset').addEventListener('click',()=>changeLimit(0,true));
   setInterval(()=>{
     if(mode==='demo'){
