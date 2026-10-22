@@ -271,6 +271,18 @@ body.warning-open{overflow:hidden}
 .real-model-option{min-width:0}
 .model-line{flex-wrap:wrap}
 @media(max-width:900px){.real-model-grid{grid-template-columns:1fr}}
+ 
+/* Compact radio/link diagnosis tied to actual device telemetry, not WebSocket alone */
+.radio-health{background:#f5f8f7;border:1px solid #d9e3df;border-left:3px solid #8a9a96;border-radius:9px;padding:13px 15px;margin:10px 16px 4px;line-height:1.5}
+.radio-health-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.radio-health-top strong{font-size:12px;font-weight:760;color:#263d3b}
+.radio-chip{font:750 10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.6px;border:1px solid #d8e1de;border-radius:5px;padding:4px 7px;white-space:nowrap}
+.radio-health p{margin:6px 0 0;color:#60716c;font-size:11px}
+.radio-health[data-state="warning"]{border-left-color:#c07635;background:#fffaf3}
+.radio-health[data-state="warning"] .radio-chip{border-color:#edcfac;color:#9c5c22}
+.radio-health[data-state="ok"]{border-left-color:#438b75}
+.radio-health[data-state="demo"]{border-left-color:#8798a6}
+@media(max-width:560px){.radio-health{margin:10px 12px 4px;padding:11px 12px}}
 </style></head><body><div class="shell">
   <aside class="sidebar" aria-label="Primary navigation">
     <div class="brand"><div class="brandmark" aria-hidden="true">P<span style="color:#8bb4a4;font-size:12px;margin-left:1px">/</span></div><div><div class="brand-title">ParkSense</div><div class="brand-caption">VEHICLE INTERFACE</div></div></div>
@@ -361,6 +373,7 @@ body.warning-open{overflow:hidden}
         <div class="statusitem"><span class="micro">Controller connection</span><span class="chip"><i class="dot bad" id="connectionDot"></i><span id="connectionText">DEVICE NOT CONNECTED</span></span></div>
         <div class="statusitem"><span class="micro">Parking switch</span><span class="chip"><i class="dot bad" id="parkingDot"></i><span id="parkingText">PARKING MODE —</span></span></div>
         <div class="statusitem"><span class="micro">Vehicle speed source</span><span class="mono">GPS RECEIVER / UART2</span></div>
+        <div class="statusitem"><span class="micro">ESP32 Wi-Fi radio</span><span class="mono" id="liveWifiChannel">AWAITING DATA</span></div>
       </div>
 
       <section class="io-panel" aria-label="Predicted physical warning outputs">
@@ -409,6 +422,10 @@ body.warning-open{overflow:hidden}
         </section>
         <section class="panel zonepanel" id="sensorDiagnostics" aria-label="Individual ESP-NOW sensor status">
           <div class="zones-top"><div><div class="panel-title">Proximity sensors</div><div class="subnote">ESP-NOW linked ultrasonic sensors and motion detection</div></div><span class="micro" id="activePods">4 / 4 PODS</span></div>
+          <div class="radio-health" id="radioHealth" data-state="unknown" role="status" aria-live="polite">
+            <div class="radio-health-top"><strong id="radioHealthTitle">Radio link not checked</strong><span class="radio-chip" id="radioChannelBadge">CHANNEL —</span></div>
+            <p id="radioHealthDetail">Live data from the ESP32 is required to check which Wi-Fi channel its radio uses.</p>
+          </div>
           <div class="zones-list">
             <div class="zone-row" id="zoneF"><div class="zone-icon">F</div><div><div class="zone-label">Front sensor</div><div class="zone-status" id="motionF">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distF">85 <small>cm</small></div><div class="state-tag" id="statusF">CLEAR</div></div></div>
             <div class="zone-row" id="zoneR"><div class="zone-icon">B</div><div><div class="zone-label">Rear sensor</div><div class="zone-status" id="motionR">No movement</div></div><div class="zone-right"><div class="zone-dist" id="distR">120 <small>cm</small></div><div class="state-tag" id="statusR">CLEAR</div></div></div>
@@ -428,14 +445,16 @@ body.warning-open{overflow:hidden}
         <div><div class="panel-title">Warning sound</div><p>Optional audio from this browser. Enable sound once to hear incoming danger alerts. Mute and test affect this browser only; hardware LED and buzzer logic on the ESP32 are never disabled from here.</p></div>
         <div class="hmi-audio-actions"><span id="audioStatus" class="audio-pill">BROWSER MUTED</span><button id="soundToggle" class="hmi-btn blue" type="button">Enable sound</button><button id="testSound" class="hmi-btn" type="button">Test beep</button></div>
       </section>
-      <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Live connection</div><span class="micro">AUTO / COOLIFY</span></div><p class="subnote">This dashboard automatically connects to its own secure server. The ESP32 posts readings separately. No IP or WebSocket address needs to be typed.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="Automatically determined" readonly aria-readonly="true"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Reconnect</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">Only the ESP32 posts telemetry. The Android hotspot must be on 2.4 GHz channel 1 for ESP-NOW coexistence.</div>
+      <section class="panel connectpanel" id="connectionSettings"><div class="panel-inner"><div class="panel-header"><div class="panel-title">Live connection</div><span class="micro">AUTO / COOLIFY</span></div><p class="subnote">This dashboard automatically connects to its own secure server. The ESP32 posts readings separately. No IP or WebSocket address needs to be typed.</p><div class="connect-layout"><div class="field"><label for="wsUrl">SECURE WEBSOCKET ENDPOINT</label><input class="url-input" type="text" id="wsUrl" value="" spellcheck="false" autocomplete="off" placeholder="Automatically determined" readonly aria-readonly="true"></div><div class="connect-actions"><button class="solid-button" type="button" id="connectBtn">Reconnect</button><button class="outline-button" type="button" id="demoBtn">Use demo</button></div></div><div class="connect-helper" id="connectHelp">The ESP32 can join a 2.4 GHz phone hotspot on its actual channel. ESP-NOW sensor pods must separately use that same channel to transmit reliably; fixed-channel pods will not follow automatically.</div>
   <div class="cloud-check" aria-label="Connection self-check">
     <div><span>WEBSITE SERVER</span><strong id="cloudServerStatus">CHECKING</strong></div>
     <div><span>ESP32 DEVICE</span><strong id="cloudDeviceStatus">CHECKING</strong></div>
+    <div><span>HOTSPOT CHANNEL</span><strong id="cloudWifiChannel">—</strong></div>
+    <div><span>ACTIVE SENSOR PODS</span><strong id="cloudPodCount">—</strong></div>
     <div><span>LAST ESP32 REPORT</span><strong id="cloudLastSeen">—</strong></div>
     <button type="button" class="outline-button" id="refreshCloudStatus">Check connection ↗</button>
   </div>
-  <div class="cloud-help">If the website is online but ESP32 is offline: confirm hotspot channel 1, check ESP32 serial logs (115200), Wi-Fi credentials, DEVICE_TOKEN and HTTPS certificate. This panel is read-only; it never disables your buzzer or LEDs.</div></div></section>
+  <div class="cloud-help">If the website is online but ESP32 is offline, inspect serial logs (115200), the hotspot's 2.4 GHz band, credentials, DEVICE_TOKEN and TLS certificate. If the hotspot uses CH 6 or CH 11 but pods are still fixed to CH 1, ESP-NOW messages can disappear. Change pod channels only through verified firmware/bench testing; channel 0 alone is not automatic synchronization. This web panel cannot retune hardware or disable LEDs/buzzer.</div></div></section>
       <footer class="tiny-foot">PARKSENSE / ENGINEERING PROTOTYPE · ESP32 + ESP-NOW + GPS + ULTRASONIC + PIR · Monitoring and alerts only. No physical throttle or brake control is implemented.</footer>
     </div>
     <nav class="vehicle-dock" aria-label="Vehicle system quick navigation"></nav>
@@ -458,7 +477,7 @@ body.warning-open{overflow:hidden}
   const DEFAULT_HOST='192.168.4.1';
   let mode='demo', socket=null, wantsConnection=false, reconnectTimer=null, lastTelemetry=0, remoteControl=false, lastAlert='', demoStep=0, lastSensorState={};
   let limitPending=false;
-  let telemetry={systemEnabled:false,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};
+  let telemetry={systemEnabled:false,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};
   let eventLog=[];
   let demoProfile='normal';
   if(location.protocol==='http:' && location.hostname && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
@@ -1203,6 +1222,38 @@ body.warning-open{overflow:hidden}
     $('vehicleModeLabel').textContent=mode==='demo'?'DEMO DATA':'COOLIFY LIVE';
   }
 
+  // A reported main-ESP32 channel is not proof that four independent pods follow it.
+  // Their freshness is inferred only from four valid, recent distance readings.
+  function updateRadioHealth(active) {
+    const badge=$('radioChannelBadge'),title=$('radioHealthTitle'),detail=$('radioHealthDetail'),box=$('radioHealth');
+    const connected=mode==='live'&&$('connectionText').textContent==='DEVICE CONNECTED';
+    const channel=Number.isInteger(telemetry.wifiChannel)&&telemetry.wifiChannel>=1&&telemetry.wifiChannel<=14?telemetry.wifiChannel:null;
+    badge.textContent=mode==='demo'?'SIMULATION':connected&&channel!==null?'CH '+channel:'CHANNEL —';
+    $('liveWifiChannel').textContent=mode==='demo'?'DEMO':connected&&channel!==null?'2.4 GHz / CH '+channel:'NO LIVE CHANNEL';
+    let state='unknown',heading='Awaiting radio telemetry',copy='Connect the ESP32 to see its current Wi-Fi channel and incoming pod readings.';
+    if(mode==='demo'){
+      state='demo';heading='Demo sensor values';copy='Sample data only. No real hotspot or ESP-NOW channel is being measured.';
+    }else if(connected){
+      if(channel===null){
+        heading='Firmware channel not reported';
+        copy=active+' / 4 pods reporting. Older main.cpp builds may omit wifiChannel; verify the channel in Serial Monitor.';
+        state=active===4?'ok':'warning';
+      }else if(active===0){
+        state='warning';heading='ESP32 online · sensor link missing';
+        copy='Hotspot CH '+channel+'; zero pods reporting. Check pod power and ESP-NOW channels. Pods fixed to CH 1 cannot automatically follow a different hotspot channel.';
+      }else if(active<4){
+        state='warning';heading='Partial sensor communication';
+        copy='Main ESP32 uses CH '+channel+'; '+active+' / 4 pods reporting. Check the missing pods and confirm all radios use the same channel.';
+      }else{
+        state='ok';heading='Four pods sending data';
+        copy='Main ESP32 reports CH '+channel+' and all four pods have recent readings. No independent pod-channel confirmation is available.';
+      }
+    }
+    box.dataset.state=state;
+    title.textContent=heading;
+    detail.textContent=copy;
+  }
+
   function render(){
     let speed=Number(telemetry.maxSpeed)||0,limit=Number(telemetry.speedLimit)||15;
     speed=Math.max(0,Math.min(999,speed));limit=Math.max(5,Math.min(100,limit));
@@ -1227,6 +1278,7 @@ body.warning-open{overflow:hidden}
       lastSensorState[key]=label;
     });
     $('activePods').textContent=active+' / 4 PODS';
+    updateRadioHealth(active);
     let headline='Normal operation',message='Vehicle speed and detected distances are within the monitored thresholds.',tone='',symbol='✓';
     if(mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED'){headline='Waiting for ESP32 telemetry';message='Cloud dashboard is online, but the controller is offline. Connect the ESP32 to Wi-Fi to receive live alerts.';tone='warn';symbol='!';}
     else if(mode==='live' && telemetry.systemEnabled!==true){headline='Parking mode OFF';message='GPIO14 switch is OFF: all physical LED and buzzer outputs are disabled. Live sensor monitoring continues.';tone='warn';symbol='!';}
@@ -1247,7 +1299,7 @@ body.warning-open{overflow:hidden}
     lastTelemetry=Date.now();$('lastUpdate').textContent='Last update — '+stamp();updateControls();render();reflectLimitInput();
   }
   function clearConnection(){wantsConnection=false;clearTimeout(reconnectTimer);if(socket){let old=socket;socket=null;old.onclose=null;old.onmessage=null;old.onerror=null;try{old.close()}catch(e){}}}
-  function startDemo(){clearConnection();remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
+  function startDemo(){clearConnection();remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
   function connect(){
     const url=$('wsUrl').value.trim();
     if(!/^wss?:\/\/[a-zA-Z0-9.\-\[\]:]+(?:\/[^\s]*)?$/.test(url)){$('connectHelp').textContent='Enter a valid ws:// or wss:// WebSocket address.';return;}
@@ -1276,7 +1328,7 @@ body.warning-open{overflow:hidden}
           reportLimit('Not applied: '+(msg.message||'ESP32 did not acknowledge.'),'error');
         }
       }else if(msg.type==='status'){
-        if(!msg.deviceOnline){limitPending=false;remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
+        if(!msg.deviceOnline){limitPending=false;remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
       } else if(msg.type==='error'){$('connectHelp').textContent=msg.message||'Server rejected command';}
     }catch(e){console.warn('Invalid relay message:',e)}};
     candidate.onerror=()=>{if(candidate===socket)$('connectHelp').textContent='Unable to reach the Coolify relay. Check your public HTTPS domain and session.';};
@@ -1320,12 +1372,16 @@ body.warning-open{overflow:hidden}
       if(res[1].status===401){
         $('cloudDeviceStatus').textContent='LOGIN EXPIRED';
         $('cloudLastSeen').textContent='—';
+        $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
       }else if(!res[1].ok){
         $('cloudDeviceStatus').textContent='STATUS ERROR';
         $('cloudLastSeen').textContent='—';
+        $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
       }else{
         const state=await res[1].json();
         $('cloudDeviceStatus').textContent=state.deviceOnline?'RECEIVING DATA':'OFFLINE / NO DATA';
+        $('cloudWifiChannel').textContent=state.deviceOnline&&Number.isInteger(state.wifiChannel)?'CH '+state.wifiChannel:'—';
+        $('cloudPodCount').textContent=state.deviceOnline&&Number.isInteger(state.activePods)?state.activePods+' / 4':'—';
         $('cloudLastSeen').textContent=state.updatedAt
           ?new Date(state.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})
           :'NEVER';
@@ -1334,6 +1390,7 @@ body.warning-open{overflow:hidden}
       $('cloudServerStatus').textContent='UNREACHABLE';
       $('cloudDeviceStatus').textContent='UNKNOWN';
       $('cloudLastSeen').textContent='—';
+      $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
     }finally{
       btn.disabled=false;
     }
@@ -1367,7 +1424,7 @@ body.warning-open{overflow:hidden}
       if($('connectionText').textContent==='DEVICE CONNECTED'){
         $('lastUpdate').textContent='No recent telemetry received';
         setMode('live','disconnected');
-        telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0};render();
+        telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};render();
         // The WebSocket can remain open while the ESP32 has stopped sending telemetry.
       }
     }
