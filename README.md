@@ -4,6 +4,20 @@
 
 **Dashboard:** https://parkingdashboard.my.id
 
+## IMPORTANT — Phone hotspot update from your local Cline main.cpp (October 2026)
+
+The **Coolify server + dashboard now accept the optional `wifiChannel` telemetry field** from your **locally edited** main ESP32 firmware. The web shows CH 1–14 and number of pods with recent readings; it warns when the ESP32 is receiving cloud telemetry but some/all pods are offline. Old firmware without `wifiChannel` still works and displays **CHANNEL — / UNVERIFIED**.
+
+**Two distinct ESP32 main builds exist:**
+- **Repository `firmware/esp32-main/src/main.cpp`** is currently the *older channel-1-restricted* build (WiFi.begin SSID, password, 1); use channel-1 router/hotspot if you flash it.
+- **Your updated Cline `c:\\coding\\ParkSense\\src\\main.cpp`**, supplied in chat, uses `WiFi.begin(..., 0)`, changes main ESP32 AP to follow the 2.4 GHz hotspot, and sends `wifiChannel`. This updated firmware has **not** been uploaded to this repo, because the shared copy contained live Wi-Fi/AP passwords and a device token. **Do not flash the repo copy over your updated local Cline firmware.**
+
+**Critical limitation:** ESP-NOW pods flashed with `esp_wifi_set_channel(1,...)` are still locked to CH 1. Setting `peerInfo.channel=0` only uses a sender's current radio channel; **it does not scan, retune or auto-pair with another ESP32 channel**. If hotspot uses CH 6, verify each pod is configured for CH 6 through controlled testing, or choose a fixed CH 1 router. A channel change on the main can disrupt pods until their own channel configuration is updated. Website reports the channel received from the main and active data per pod, **not radio channel proof**.
+
+**Security:** your firmware paste exposed the Wi-Fi password, ESP32 local AP password and device token in a chat. Change all three locally (and `DEVICE_TOKEN` in Coolify) before use. Never paste actual credentials or live firmware with embedded secrets into public GitHub; keep local copies/private secure storage.
+
+
+
 ## Your remaining steps (main ESP32 + Android hotspot)
 
 ### 0. Before flashing: keep the original firmware and verify radio channel
