@@ -59,3 +59,18 @@ test('Speed setting UI controls the warning THRESHOLD, never physical speed',()=
   assert.match(source,/ESP32 CONFIRMED/);
   assert.match(source,/Number\.isInteger\(value\)\|\|value<5\|\|value>100/);
 });
+
+test('New phone hotspot firmware channel is rendered separately from ESP-NOW pod health',()=>{
+  for(const id of ['radioHealth','radioHealthTitle','radioHealthDetail','radioChannelBadge','cloudWifiChannel','cloudPodCount','liveWifiChannel']) {
+    assert.match(html,new RegExp('id="'+id+'"'));
+  }
+  assert.match(source,/function updateRadioHealth\(active\)/);
+  assert.match(source,/updateRadioHealth\(active\)/);
+  assert.match(source,/Number\.isInteger\(telemetry\.wifiChannel\)/);
+  assert.match(source,/cannot automatically follow a different hotspot channel/);
+  assert.match(source,/Main ESP32 uses CH /);
+  assert.match(source,/Demo sensor values/);
+  assert.match(source,/Older main\.cpp builds may omit wifiChannel/);
+  assert.match(source,/state\.wifiChannel/);
+  assert.match(source,/state\.activePods/);
+});
