@@ -97,6 +97,14 @@ function normalise(data){
   }
   if (typeof data.systemEnabled !== 'boolean') return null;
   result.systemEnabled = data.systemEnabled;
+  // Optional ESP32 station/AP channel in 2.4GHz band. Old firmware may omit it.
+  // Never trust raw device fields: only validated integers cross the WSS relay.
+  if (Object.hasOwn(data, 'wifiChannel')) {
+    if (typeof data.wifiChannel !== 'number' ||
+        !Number.isInteger(data.wifiChannel) || data.wifiChannel < 1 || data.wifiChannel > 14) return null;
+    result.wifiChannel = data.wifiChannel;
+  }
+  // Channel alone does not prove ESP-NOW pods changed channel or are synchronized.
   // Command capability must be explicitly advertised by updated ESP32 firmware.
   result.remoteControl = data.cloudControl === 1;
   if (typeof data.commandApplied === 'string' && /^[a-f0-9]{16}$/.test(data.commandApplied)) {
@@ -177,7 +185,16 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET' && route==='/api/device/status'){
       if(!authenticated(req))return json(res,401,{error:'Login required'});
-      return json(res,200,{deviceOnline:isOnline(),updatedAt:lastSeenAt||null});
+      const online=isOnline();
+      const activePods=online
+        ?['distF','distR','distL','distRefR'].filter(key=>lastTelemetry[key]>=2).length
+        :0;
+      return json(res,200,{
+        deviceOnline:online,
+        updatedAt:lastSeenAt||null,
+        wifiChannel:online?(lastTelemetry.wifiChannel??null):null,
+        activePods
+      });
     }
     if(req.method==='POST' && route==='/api/logout'){
       return json(res,200,{ok:true},{'Set-Cookie':'ps_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict'});
