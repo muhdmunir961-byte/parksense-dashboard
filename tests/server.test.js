@@ -43,6 +43,35 @@ test('Auth, protected telemetry and browser WebSocket', async (t)=>{
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`,{headers:{cookie,origin:host}});
   await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject)});
   t.after(()=>ws.close());
+  // Optional hotspot radio channel survives authenticated device -> server -> WSS.
+  const channelSeen=new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{ws.off('message',listen);reject(Error('Channel missing in live WSS'))},1800);
+    function listen(raw) {
+      let msg;
+      try { msg=JSON.parse(String(raw)); } catch { return; }
+      if(msg.type==='telemetry' && msg.data.wifiChannel===6) {
+        clearTimeout(timeout);ws.off('message',listen);resolve();
+      }
+    }
+    ws.on('message',listen);
+  });
+  const channelPost=await fetch(host+'/api/device/telemetry',{
+    method:'POST',headers,body:JSON.stringify({...data,wifiChannel:6,distL:-1})
+  });
+  assert.equal(channelPost.status,200);
+  const channelStatus=await fetch(host+'/api/device/status',{headers:{cookie}});
+  assert.equal(channelStatus.status,200);
+  const channelData=await channelStatus.json();
+  assert.equal(channelData.deviceOnline,true);
+  assert.equal(channelData.wifiChannel,6);
+  assert.equal(channelData.activePods,3);
+  await channelSeen;
+  for(const badChannel of [0,15,-1,1.5,'6',null]){
+    const rejected=await fetch(host+'/api/device/telemetry',{
+      method:'POST',headers,body:JSON.stringify({...data,wifiChannel:badChannel})
+    });
+    assert.equal(rejected.status,422,'Invalid channel should be rejected: '+badChannel);
+  }
   const missingMode=await fetch(host+'/api/device/telemetry',{method:'POST',headers,body:JSON.stringify({...data,systemEnabled:'maybe'})});
   assert.equal(missingMode.status,422);
   const next=await fetch(host+'/api/device/telemetry',{method:'POST',headers,body:JSON.stringify({...data,systemEnabled:false})});
