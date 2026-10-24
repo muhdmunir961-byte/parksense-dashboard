@@ -6,10 +6,10 @@
 
 ## IMPORTANT — Phone hotspot update from your local Cline main.cpp (October 2026)
 
-The **Coolify server + dashboard now accept the optional `wifiChannel` telemetry field** from your **locally edited** main ESP32 firmware. The web shows CH 1–14 and number of pods with recent readings; it warns when the ESP32 is receiving cloud telemetry but some/all pods are offline. Old firmware without `wifiChannel` still works and displays **CHANNEL — / UNVERIFIED**.
+The **Coolify server + dashboard accept the optional `wifiChannel` telemetry field** from the auto-channel main ESP32 firmware. The web shows CH 1–14 and number of pods with recent readings; it warns when the ESP32 is receiving cloud telemetry but some/all pods are offline. Old firmware without `wifiChannel` still works and displays **CHANNEL — / UNVERIFIED**.
 
 **Two distinct ESP32 main builds exist:**
-- **Repository `firmware/esp32-main/src/main.cpp`** is currently the *older channel-1-restricted* build (WiFi.begin SSID, password, 1); use channel-1 router/hotspot if you flash it.
+- **Repository `firmware/esp32-main/src/main.cpp`** now implements **auto hotspot channel**, a persistent HTTPS client when supported by the server, and POST duration / RSSI logs. It contains placeholders only, never real Wi-Fi credentials or device tokens. Keep a backup of your locally working Cline firmware before changing it.
 - **Your updated Cline `c:\\coding\\ParkSense\\src\\main.cpp`**, supplied in chat, uses `WiFi.begin(..., 0)`, changes main ESP32 AP to follow the 2.4 GHz hotspot, and sends `wifiChannel`. This updated firmware has **not** been uploaded to this repo, because the shared copy contained live Wi-Fi/AP passwords and a device token. **Do not flash the repo copy over your updated local Cline firmware.**
 
 **Critical limitation:** ESP-NOW pods flashed with `esp_wifi_set_channel(1,...)` are still locked to CH 1. Setting `peerInfo.channel=0` only uses a sender's current radio channel; **it does not scan, retune or auto-pair with another ESP32 channel**. If hotspot uses CH 6, verify each pod is configured for CH 6 through controlled testing, or choose a fixed CH 1 router. A channel change on the main can disrupt pods until their own channel configuration is updated. Website reports the channel received from the main and active data per pod, **not radio channel proof**.
@@ -22,9 +22,9 @@ The **Coolify server + dashboard now accept the optional `wifiChannel` telemetry
 
 ### 0. Before flashing: keep the original firmware and verify radio channel
 - Back up your currently working `main.cpp`, your ESP32 board type, pin connections and serial-port settings. **Never overwrite a proven working build without a restore copy.**
-- Main + four ESP-NOW sensor pods are all fixed to **2.4 GHz Wi-Fi channel 1**.
+- **Main ESP32 now joins any usable 2.4 GHz hotspot channel**; older ESP-NOW sensor pods may STILL be hard-coded to **channel 1**. Do not assume firmware moves the pod channels.
 - Set the Android hotspot band to **2.4 GHz**, then *check the hotspot's actual channel with a Wi-Fi analyzer*. Many phones automatically choose **channel 6 or 11**, even with 2.4 GHz selected.
-- **If the phone hotspot is not channel 1, STOP:** do not enable cloud Wi-Fi/flash the cloud-enabled firmware. The dashboard can run in demo mode or the original local ESP32 dashboard can still be used. A router with fixed 2.4 GHz channel 1 is a fallback.
+- **If the hotspot is not channel 1**, the ESP32 may connect to Coolify while legacy CH1 pods stop communicating. For a full sensor demonstration either configure each pod to that exact channel (after controlled bench testing), or use a router fixed to channel 1. Changing `peerInfo.channel` to 0 alone does NOT auto-sync the pods.
 - This project displays telemetry and warns; it **does not control physical vehicle braking, accelerator or throttle**.
 
 ### 1. Set up the Coolify server (once)
@@ -52,7 +52,7 @@ Download or clone this repository to your **own laptop**. Open `firmware/esp32-m
 
 The **actual repo contains obvious `ISI_...` placeholders**. Replace those texts in your local copy. Never push `main.cpp` containing real Wi-Fi credentials/token to GitHub or paste them into a chat. The local ESP32 hotspot password is `PARKSENSE_AP_PASSWORD`, currently `123456789`; change it to a unique string with at least 8 characters for non-lab use.
 
-Until all three fields are filled and pass validation, the ESP32 does **not** start cloud Wi-Fi, but its local ESP-NOW/LED/buzzer logic is still available. The old `cloud_config.h` wizard is no longer needed or read by `main.cpp`. Use a **verified channel 1** hotspot/router (not merely 2.4 GHz).
+Until all three fields are filled and pass validation, the ESP32 does **not** start cloud Wi-Fi, but its local ESP-NOW/LED/buzzer logic is still available. The old `cloud_config.h` wizard is no longer needed or read by `main.cpp`. Use a **2.4 GHz** hotspot and verify its actual channel; make all ESP-NOW pods match the same channel.
 
 ### 3. Compile + flash *main ESP32 only*
 Connect your **main ESP32 via USB** with the proper USB data cable. Have PlatformIO installed in VS Code or code-server. Use the project that contains `firmware/esp32-main/platformio.ini`.
@@ -64,22 +64,29 @@ pio run -d firmware/esp32-main -t upload
 The 4 ESP-NOW pod firmwares should **not** be reflashed unless their packet struct / ID / ESP-NOW channel are known to differ; preserve working pod firmware. If PlatformIO fails, inspect the compiler error rather than guessing / changing physical wires.
 
 ### 4. Verify everything after upload
-- Open serial monitor at **115200 baud** on the main ESP32 and check ESP-NOW starts, cloud connects **on channel 1**, and there are no HTTP/TLS errors.
+- Open serial monitor at **115200 baud** on the main ESP32; check actual hotspot CH, Wi-Fi RSSI (dBm), `POST=200` and the HTTPS request duration in milliseconds. The local sensor pods must report recent readings on the same channel.
 - **Prove all four pods** F / R / L / Right report live values. A missing pod must show **OFFLINE**.
 - Check the GPIO14 switch, rotary encoder speed limit, GPS freshness and the actual LED/buzzer safety output at distances **<15cm**, **15–34cm** and **35–54cm** with stationary test objects. In **Parking Assist**, change the speed alert threshold with `+`, `−`, reset to 15 or enter a value (5–100 km/h) and click **Apply**. Wait for `ESP32 CONFIRMED` before claiming success.
 - Tablet connects to internet (same phone hotspot works). Open `https://parkingdashboard.my.id`, log in, then wait for device telemetry. A healthy WSS connection by itself does **not** mean the ESP32 is online.
-- If you see offline, check hotspot **channel 1**, SSID/password, DEVICE_TOKEN, TLS trust chain, phone data coverage and ESP32 serial output. Some Cloudflare / reverse-proxy TLS certificates chain to a root other than included `ISRG Root X1`; if so, install the **actual trusted CA certificate** in `cloud_ca.h`. Never switch to `setInsecure()`.
+- If you see offline or frequent delays, check hotspot **2.4 GHz**/RSSI, whether all sensor pods use the **same channel**, device token, TLS trust chain, phone data coverage and `POST` codes/durations in serial output. The trusted root CA is embedded inside `main.cpp`; if your actual domain uses a different certificate issuer, update that certificate locally. Never disable certificate verification.
+
+## Telemetry lag and disconnect troubleshooting (optimized firmware)
+The cloud dashboard now distinguishes **FRESH** telemetry (under 4.5 seconds), **DELAYED** telemetry (4.5–12 seconds) and **OFFLINE** (12+ seconds). These thresholds stop false disconnects on occasional slow phone hotspots but **do not make stale data safe**: the UI disables cloud speed-limit controls when data is delayed, and physical safety alarms remain independent.
+
+The optimized `main.cpp` keeps its TLS/HTTP client alive within the cloud FreeRTOS task and asks the server to reuse HTTPS where possible, so successful uploads can avoid extra TLS handshakes. The request log includes `POST=<HTTP code>`, elapsed milliseconds, `RSSI` and hotspot `CH`. Even with TLS reuse, mobile network or Coolify proxy latency can still create gaps; test against the ESP32 local page at `http://192.168.4.1` to isolate cloud delay from ESP-NOW sensor delay.
+
+**Crucial:** for ESP32 Wi-Fi AP+STA mode, Espressif automatically aligns the local SoftAP channel with the hotspot station channel. Do not manually call `esp_wifi_set_channel()` or restart the ESP32 local AP from a task while it is connected to the phone, since that risks breaking Wi-Fi/ESP-NOW. This does **not** make independent sensor pods auto-retune. An auto-channel phone hotspot is unsuitable for fixed-channel pod testing if its channel changes unpredictably.
 
 ## Set speed-warning threshold directly from the dashboard
 Open **Parking Assist** → **TARGET ALERT LIMIT**, choose a whole number from **5 to 100 km/h**, then click **Apply**. The cloud-connected main ESP32 receives the command in the reply to its next authenticated HTTPS telemetry POST. The dashboard shows **Pending** until the ESP32 acknowledges the new limit on a subsequent telemetry reading. You can also use the + / - buttons and Reset (15 km/h).
 
-This controls **only the warning threshold**, not the actual vehicle speed, throttle, motor or brakes. The physical rotary encoder continues to work and can override the warning threshold; the GPIO14 hardware warning switch is unchanged. Do not assume the command worked until the dashboard says **ESP32 CONFIRMED**. Control requires the **latest firmware flashed to the main ESP32**, Coolify device connected to channel-1 hotspot, and a logged-in dashboard session. Demo mode is simulation-only. Commands expire if the ESP32 doesn't acknowledge promptly. Direct commands to browser WebSocket are not accepted.
+This controls **only the warning threshold**, not the actual vehicle speed, throttle, motor or brakes. The physical rotary encoder continues to work and can override the warning threshold; the GPIO14 hardware warning switch is unchanged. Do not assume the command worked until the dashboard says **ESP32 CONFIRMED**. Control requires the **latest firmware flashed to the main ESP32**, Coolify device receiving fresh telemetry from the ESP32, and a logged-in dashboard session. Demo mode is simulation-only. Commands expire if the ESP32 doesn't acknowledge promptly. Direct commands to browser WebSocket are not accepted.
 
 ## What is already built
 - **Coolify Node.js server:** authenticated HTTPS device POST, read-only WebSocket telemetry relay, login and session cookies, health/status endpoint; same-origin, session-protected POST for setting the ESP32 speed **warning threshold only**, with explicit device acknowledgement.
 - **Tablet-friendly four-page website:** Overview, Parking Assist, Diagnostics, Settings. Static demo scenarios allow display testing with no hardware.
 - **Real 3D gallery:** seven creator-hosted CC BY references: Perodua Myvi (**generation unverified**), Proton Saga 1985 lightweight and HD, Proton X50, Proton Waja, Proton Jumbuck and Honda Civic FE police car (2022). Unverified years/trims are labelled; larger meshes can load slower on tablets. Sketchfab is an external embed with creator credits, not OEM CAD. Parking Assist still uses a separate *schematic* for four sensor locations.
-- **Main firmware:** existing ESP32 physical warning logic, rotary encoder and local dashboard `http://192.168.4.1`; optional HTTPS uplink runs in a separate FreeRTOS task and retries connecting to **channel 1** every 30 seconds. It receives only validated `set_speed_limit` commands (5–100 km/h), updates the warning threshold in RAM and acknowledges on subsequent telemetry. A physical encoder change can still override the setting. **Cloud upload failure must never be treated as hardware-safe confirmation.**
+- **Main firmware:** existing ESP32 physical warning logic, rotary encoder and local dashboard `http://192.168.4.1`; optional HTTPS uplink runs in a separate FreeRTOS task and retries joining the phone hotspot's **actual 2.4 GHz channel** every 10 seconds. It receives only validated `set_speed_limit` commands (5–100 km/h), updates the warning threshold in RAM and acknowledges on subsequent telemetry. A physical encoder change can still override the setting. **Cloud upload failure must never be treated as hardware-safe confirmation.**
 - **Automated checks:** `npm test` for authentication/telemetry/UI and static firmware safeguards. GitHub Actions `ParkSense quality gate` also compiles PlatformIO firmware with cloud ON/OFF (check green results before flashing).
 
 ## Main board pins (confirm against your original wiring)
@@ -97,7 +104,7 @@ This controls **only the warning threshold**, not the actual vehicle speed, thro
 ## Data flow and simple diagnosis
 
 ```text
-4 sensor pods --ESP-NOW CH1--> main ESP32 --HTTPS POST/1s--> Coolify
+4 sensor pods --ESP-NOW on SAME channel--> main ESP32 --authenticated HTTPS POST--> Coolify
                                    |                        |
                                    | Wi-Fi AP               | secure WSS after login
                                    v                        v
