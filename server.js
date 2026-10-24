@@ -15,6 +15,9 @@ if (DASHBOARD_PASSWORD.length < 16 || DEVICE_TOKEN.length < 24 || DASHBOARD_PASS
 const sessionKey = crypto.createHash('sha256').update(DASHBOARD_PASSWORD + '\0' + DEVICE_TOKEN).digest();
 const clients = new Set();
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1024, perMessageDeflate: false });
+// Dedicated outbound device WSS endpoint: no user cookies, bearer token only.
+const deviceWss = new WebSocketServer({ noServer: true, maxPayload: 1024, perMessageDeflate: false });
+let deviceSocket = null;
 let lastTelemetry = null;
 let lastSeenAt = 0;
 let lastOnlineState = false;
@@ -127,6 +130,37 @@ function normalise(data){
   }
   return result;
 }
+
+function outboundCommand() {
+  return pendingLimitCommand && isFresh() && lastTelemetry?.remoteControl
+    ?{type:'set_speed_limit',id:pendingLimitCommand.id,value:pendingLimitCommand.value}
+    :null;
+}
+function sendDeviceCommand() {
+  const cmd=outboundCommand();
+  if(cmd&&deviceSocket?.readyState===WebSocket.OPEN&&deviceSocket.bufferedAmount<4096) {
+    deviceSocket.send(JSON.stringify(cmd));
+  }
+}
+function acceptTelemetry(payload,source) {
+  const wasOnline=isOnline();
+  lastTelemetry=payload;
+  lastSeenAt=Date.now();
+  if(!wasOnline || lastQualityState!=='fresh') {
+    lastOnlineState=true;
+    lastQualityState='fresh';
+    broadcast({type:'status',deviceOnline:true,connectionQuality:'fresh'});
+  }
+  expireCommand();
+  if(pendingLimitCommand && payload.commandApplied===pendingLimitCommand.id
+     && payload.speedLimit===pendingLimitCommand.value) {
+    const confirmed=pendingLimitCommand;
+    pendingLimitCommand=null;
+    announceCommand('applied',confirmed,'ESP32 confirmed the new alert threshold.');
+  }
+  broadcast({type:'telemetry',data:payload,receivedAt:lastSeenAt,transport:source});
+  return outboundCommand();
+}
 function secureCookie(req){return req.socket.encrypted || req.headers['x-forwarded-proto']==='https';}
 const server=http.createServer(async(req,res)=>{
   const url = new URL(req.url || '/', 'http://localhost');
@@ -158,25 +192,7 @@ const server=http.createServer(async(req,res)=>{
       if(!header.startsWith('Bearer ')||!safeEqual(header.slice(7),DEVICE_TOKEN))return json(res,401,{error:'Unauthorized device'});
       const payload=normalise(JSON.parse(await body(req)));
       if(!payload)return json(res,422,{error:'Invalid telemetry'});
-      const wasOnline=isOnline();
-      lastTelemetry=payload;lastSeenAt=Date.now();
-      if(!wasOnline || lastQualityState!=='fresh'){
-        lastOnlineState=true;lastQualityState='fresh';
-        broadcast({type:'status',deviceOnline:true,connectionQuality:'fresh'});
-      }
-      expireCommand();
-      // Acknowledgement is explicit: match command ID *and* the new physical limit.
-      if(pendingLimitCommand && payload.commandApplied===pendingLimitCommand.id
-         && payload.speedLimit===pendingLimitCommand.value) {
-        const confirmed=pendingLimitCommand;
-        pendingLimitCommand=null;
-        announceCommand('applied',confirmed,'ESP32 confirmed the new alert threshold.');
-      }
-      broadcast({type:'telemetry',data:payload,receivedAt:lastSeenAt});
-      // ESP32 polls naturally with telemetry HTTPS uploads; NO inbound device port required.
-      const pending=pendingLimitCommand && payload.remoteControl && isFresh()
-        ?{type:'set_speed_limit',id:pendingLimitCommand.id,value:pendingLimitCommand.value}
-        :null;
+      const pending=acceptTelemetry(payload,'https');
       return json(res,200,{ok:true,command:pending});
     }
     if(req.method==='POST' && route==='/api/control/speed-limit'){
@@ -199,6 +215,8 @@ const server=http.createServer(async(req,res)=>{
       const command={id:crypto.randomBytes(8).toString('hex'),value,expiresAt:Date.now()+COMMAND_TTL_MS};
       pendingLimitCommand=command;
       announceCommand('pending',command,'Waiting for ESP32 to acknowledge setting');
+      // In fast WSS mode, deliver immediately instead of waiting for a POST.
+      sendDeviceCommand();
       return json(res,202,{ok:true,state:'pending',commandId:command.id,value});
     }
     if(req.method==='GET' && route==='/api/device/status'){
@@ -234,6 +252,15 @@ const server=http.createServer(async(req,res)=>{
 server.on('upgrade',(req,socket,head)=>{
   let parsed;
   try{parsed=new URL(req.url,'http://localhost');}catch{return socket.destroy();}
+  if(parsed.pathname==='/ws/device'){
+    const header=String(req.headers.authorization||'');
+    if(!header.startsWith('Bearer ')||!safeEqual(header.slice(7),DEVICE_TOKEN)){
+      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+      return socket.destroy();
+    }
+    deviceWss.handleUpgrade(req,socket,head,ws=>deviceWss.emit('connection',ws));
+    return;
+  }
   if(parsed.pathname!=='/ws'||!authenticated(req)){socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');return socket.destroy();}
   const origin=req.headers.origin;
   if(!origin){socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');return socket.destroy();}
@@ -253,6 +280,29 @@ wss.on('connection',ws=>{
   ws.on('message',()=>ws.send(JSON.stringify({type:'error',message:'Use the dashboard threshold controls; direct WebSocket commands are disabled.'})));
   ws.on('close',()=>clients.delete(ws));
 });
+
+deviceWss.on('connection',ws=>{
+  if(deviceSocket&&deviceSocket.readyState===WebSocket.OPEN)deviceSocket.close(1000,'Superseded by new device session');
+  deviceSocket=ws;
+  let lastMessageAt=0;
+  ws.isAlive=true;
+  ws.on('pong',()=>{ws.isAlive=true});
+  ws.on('message',(raw,isBinary)=>{
+    if(isBinary){ws.close(1003,'Text JSON only');return;}
+    const now=Date.now();
+    // Hard cap 8 messages/sec from the authenticated ESP32.
+    if(now-lastMessageAt<120)return;
+    lastMessageAt=now;
+    let decoded;
+    try{decoded=JSON.parse(String(raw))}catch{ws.close(1007,'Malformed telemetry');return;}
+    const payload=normalise(decoded);
+    if(!payload){ws.close(1007,'Invalid telemetry');return;}
+    const command=acceptTelemetry(payload,'wss');
+    if(command && ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(command));
+  });
+  ws.on('close',()=>{if(deviceSocket===ws)deviceSocket=null;});
+  ws.on('error',()=>{if(deviceSocket===ws)deviceSocket=null;});
+});
 const interval=setInterval(()=>{
   const online=isOnline();
   const quality=connectionQuality();
@@ -261,7 +311,10 @@ const interval=setInterval(()=>{
     lastOnlineState=online;lastQualityState=quality;
     broadcast({type:'status',deviceOnline:online,connectionQuality:quality,telemetryAgeMs:telemetryAgeMs()});
   }
-  for(const ws of clients){if(!ws.isAlive){ws.terminate();continue;}ws.isAlive=false;ws.ping();}
+  for(const ws of [...clients,...deviceWss.clients]){
+    if(!ws.isAlive){ws.terminate();continue;}
+    ws.isAlive=false;ws.ping();
+  }
   // Prevent unbounded login attempt records.
   for(const [key,value] of loginAttempts)if(value.until<Date.now() && value.count===0)loginAttempts.delete(key);
 },2500);
