@@ -8,9 +8,10 @@
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
 // ============================================================================
-// PARKSENSE / MAIN ESP32 — ISI 3 MAKLUMAT DI SINI SAHAJA
+// PARKSENSE / MAIN ESP32 — HOTSPOT AUTO CHANNEL / 3 MAKLUMAT SAHAJA
 // ============================================================================
-// 1. Pastikan hotspot / router 2.4 GHz betul-betul guna Wi-Fi CHANNEL 1.
+// 1. Hotspot 2.4 GHz boleh guna mana-mana channel; SENSOR POD MESTI ikut
+//    channel yang sama. Sensor pod CH 1 TAK ikut hotspot automatik.
 // 2. Di laptop sendiri, GANTI tulisan ISI_... dalam 3 baris di bawah.
 // 3. Simpan dan upload MAIN ESP32 melalui PlatformIO. Tiada fail lain diedit.
 // Jangan push semula main.cpp yang sudah mengandungi password / token ke GitHub.
@@ -18,7 +19,7 @@
 // Cloud sentiasa disediakan, tetapi TIDAK akan cuba connect selagi maklumat
 // masih kosong / placeholder. LED, buzzer dan empat pod kekal berfungsi lokal.
 #define CLOUD_UPLINK_ENABLED true
-#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"
+#define CLOUD_WIFI_SSID "ISI_NAMA_HOTSPOT_WIFI_2_4GHZ"
 #define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"
 #define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"
 #define CLOUD_API_URL "https://parkingdashboard.my.id/api/device/telemetry"
@@ -120,6 +121,7 @@ volatile int liveGpsSpeed = 0;
 unsigned long lastGpsUpdateTime = 0;
 volatile bool systemEnabled = false;
 volatile int speedLimit = 15;
+volatile int currentWifiChannel = 0;  // actual Wi-Fi channel, never guessed
 int lastClkState = LOW, lastSwState = HIGH;
 unsigned long lastEncoderPoll = 0, lastButtonPress = 0;
 
@@ -279,7 +281,8 @@ void makeTelemetry(JsonDocument &doc) {
   doc["maxSpeed"] = (int)liveGpsSpeed;
   doc["speedLimit"] = (int)speedLimit;
   doc["systemEnabled"] = (bool)systemEnabled;
-  doc["remoteControl"] = false; // monitor only; physical encoder controls alert threshold
+  doc["remoteControl"] = false; // local WebSocket remains read-only
+  doc["wifiChannel"] = (int)currentWifiChannel;
   const char *dkeys[4] = {"distF","distR","distL","distRefR"};
   const char *hkeys[4] = {"humanF","humanR","humanL","humanRefR"};
   for (int i=0;i<4;++i) { doc[dkeys[i]]=dist[i]; doc[hkeys[i]]=motion[i]; }
@@ -531,75 +534,110 @@ const char index_html[] PROGMEM = R"PARKSENSE_HTML(
 #if CLOUD_UPLINK_ENABLED
 // Network I/O in a separate FreeRTOS task, never in the main alert-control loop.
 void cloudTelemetryTask(void *ignored) {
-  // Persist only the last received command ID in RAM, until restart.
-  // Sending this ID with the next telemetry packet lets Coolify confirm execution.
+  // Only the alarm WARNING threshold may be updated remotely.
   String lastAppliedCommandId;
-  // HTTPS uplink is deliberately isolated from the physical alert loop.
-  // Always associate on channel 1; NEVER scan or change to the phone hotspot's auto channel.
   configTime(0, 0, "pool.ntp.org", "time.google.com");
-  unsigned long lastAttempt = 0;
+
+  // Keep the TLS + HTTP client objects alive inside this dedicated FreeRTOS
+  // task. A reused HTTPS connection can avoid a fresh TLS handshake for every
+  // upload. Server/proxy may still close it; HTTPClient will reconnect.
+  WiFiClientSecure secureClient;
+  secureClient.setCACert(CLOUD_ROOT_CA);
+  secureClient.setTimeout(4);
+  HTTPClient http;
+  http.setTimeout(3500);
+  http.setConnectTimeout(3500);
+  http.setReuse(true);
+  bool httpReady = false;
   bool wasConnected = false;
+  unsigned long lastWifiAttempt = 0;
+  unsigned long lastUploadDone = 0;
+  unsigned long successUploads = 0;
+  int previousHttpCode = 0;
+
   for (;;) {
-    bool connected = WiFi.status() == WL_CONNECTED;
-    if (connected && WiFi.channel() != 1) {
-      Serial.printf("[Cloud] Channel %d is not safe for ESP-NOW pods; dropping cloud Wi-Fi.\n", WiFi.channel());
-      WiFi.disconnect(false, false); // Only disconnect station; keep local AP.
-      esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-      connected = false;
-    }
+    const bool connected = WiFi.status() == WL_CONNECTED;
     if (connected != wasConnected) {
-      Serial.printf("[Cloud] %s\n", connected ? "Wi-Fi connected on channel 1" : "Wi-Fi disconnected, local alarms active");
+      if (connected) {
+        const int channel = WiFi.channel();
+        currentWifiChannel = channel >= 1 && channel <= 14 ? channel : 0;
+        Serial.printf("[Cloud] Hotspot connected | CH %d | RSSI %d dBm\n",
+                      (int)currentWifiChannel, WiFi.RSSI());
+        // IMPORTANT: AP+STA shares one radio. The AP automatically follows
+        // the hotspot's channel. Do NOT force esp_wifi_set_channel() or
+        // restart SoftAP while STA is connected; this can disrupt ESP-NOW.
+        // Pods must already transmit on the same channel to be heard.
+      } else {
+        Serial.println("[Cloud] Hotspot disconnected; local alarms still active");
+        currentWifiChannel = 0;
+        if (httpReady) http.end();
+        httpReady = false;
+        secureClient.stop();
+      }
       wasConnected = connected;
     }
-    // Non-blocking reconnect. Association specifies channel 1 explicitly (not auto-scanning).
-    // A hotspot using channel 6/11/5GHz will NOT join; pods keep their fixed radio channel.
-    if (!connected && (lastAttempt == 0 || millis() - lastAttempt >= 30000UL)) {
-      lastAttempt = millis();
-      WiFi.begin(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 1);
+
+    if (!connected && (lastWifiAttempt == 0 || millis() - lastWifiAttempt >= 10000UL)) {
+      lastWifiAttempt = millis();
+      // Channel 0 lets station discover phone hotspot's REAL channel.
+      // This does not automatically retune independent ESP-NOW pods.
+      WiFi.begin(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 0);
     }
-    if (connected && time(nullptr) > 1700000000) {
+
+    if (connected && time(nullptr) > 1700000000 && currentWifiChannel >= 1 &&
+        (lastUploadDone == 0 || millis()-lastUploadDone >=
+           (previousHttpCode == HTTP_CODE_OK ? 850UL : 1700UL))) {
       JsonDocument doc;
       makeTelemetry(doc);
-      // Advertise remote threshold capability only with cloud-enabled firmware.
-      // The ESP32 never accepts motor, brake or throttle commands.
       doc["cloudControl"] = 1;
-      if(lastAppliedCommandId.length()==16) doc["commandApplied"] = lastAppliedCommandId;
-      String body;
-      serializeJson(doc, body);
-      WiFiClientSecure secureClient;
-      secureClient.setCACert(CLOUD_ROOT_CA);
-      secureClient.setTimeout(2);
-      HTTPClient http;
-      http.setTimeout(2300);
-      if (http.begin(secureClient, CLOUD_API_URL)) {
-        http.addHeader("Authorization", String("Bearer ") + CLOUD_DEVICE_TOKEN);
-        http.addHeader("Content-Type", "application/json");
-        int status = http.POST(body);
-        if (status == HTTP_CODE_OK) {
-          const String answer=http.getString();
-          // Limit memory use; refuse unexpected instructions and untrusted payloads.
-          if(answer.length()>0 && answer.length()<=512) {
-            JsonDocument reply;
-            if(!deserializeJson(reply,answer)) {
-              JsonVariantConst command=reply["command"];
-              const char *type=command["type"] | "";
-              const char *id=command["id"] | "";
-              const int requested=command["value"] | -1;
-              if(strcmp(type,"set_speed_limit")==0 &&
-                 strlen(id)==16 && requested>=5 && requested<=100) {
-                // ONLY adjust the ESP32's warning-threshold variable.
-                // Physical brake/throttle control is not implemented.
-                speedLimit=requested;
-                lastAppliedCommandId=id;
-                Serial.printf("[Cloud] Speed ALERT limit now %d km/h (ESP32 applied)\n", requested);
-              }
+      if (lastAppliedCommandId.length() == 16) doc["commandApplied"] = lastAppliedCommandId;
+      String outgoing;
+      serializeJson(doc, outgoing);
+      const unsigned long start = millis();
+      if (!httpReady) {
+        httpReady = http.begin(secureClient, CLOUD_API_URL);
+        if (httpReady) {
+          http.addHeader("Authorization", String("Bearer ") + CLOUD_DEVICE_TOKEN);
+          http.addHeader("Content-Type", "application/json");
+          http.setReuse(true);
+        }
+      }
+      int status = httpReady ? http.POST(outgoing) : -1;
+      if (status == HTTP_CODE_OK) {
+        ++successUploads;
+        const String answer = http.getString();
+        if (answer.length() > 0 && answer.length() <= 512) {
+          JsonDocument reply;
+          if (!deserializeJson(reply, answer)) {
+            JsonVariantConst command = reply["command"];
+            const char *type = command["type"] | "";
+            const char *id = command["id"] | "";
+            const int requested = command["value"] | -1;
+            if (strcmp(type, "set_speed_limit") == 0 &&
+                strlen(id) == 16 && requested >= 5 && requested <= 100) {
+              speedLimit = requested;  // ONLY warning threshold, not brake/throttle
+              lastAppliedCommandId = id;
+              Serial.printf("[Cloud] Warning threshold applied: %d km/h\n", requested);
             }
           }
-        } else Serial.printf("[Cloud] Telemetry result: %d\n", status);
-        http.end();
+        }
       }
+      const unsigned long elapsed = millis() - start;
+      // A concise log every ~10 successful packets plus every failure makes
+      // it easy to distinguish TLS/HTTP delay from ESP-NOW sensor loss.
+      if (status != HTTP_CODE_OK || successUploads % 10 == 1) {
+        Serial.printf("[Cloud] POST=%d | %lu ms | RSSI=%d | CH=%d\n",
+                      status, elapsed, WiFi.RSSI(), (int)currentWifiChannel);
+      }
+      if (status < 0) {
+        http.end(); // reset broken transport; CA verification stays enabled
+        secureClient.stop();
+        httpReady = false;
+      }
+      previousHttpCode = status;
+      lastUploadDone = millis();
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 #endif
@@ -629,10 +667,10 @@ void setup() {
   WiFi.setSleep(false);
   esp_wifi_set_max_tx_power(78);
   delay(2000);
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+  // STA will automatically move this SoftAP onto the hotspot channel.
 #if CLOUD_UPLINK_ENABLED
   WiFi.setAutoReconnect(false); // Only the low-priority uplink task retries, channel 1.
-  if (cloudCredentialsValid()) Serial.println("[Cloud] Config ready. Wi-Fi restricted to channel 1.");
+  if (cloudCredentialsValid()) Serial.println("[Cloud] Config ready. Auto hotspot channel; sensor pods must match.");
   else Serial.println("[Cloud] OFFLINE: fill 3 settings at top of main.cpp; local alerts still work.");
 #endif
   if(esp_now_init()!=ESP_OK){Serial.println("ESP-NOW Init Failed");return;}
