@@ -136,4 +136,24 @@ test('Auth, protected telemetry and browser WebSocket', async (t)=>{
       else if(Date.now()-start>2000){clearInterval(timer);reject(Error('Missing ESP32-applied WebSocket acknowledgement'));}
     },20);
   });
+  // A high-latency phone hotspot must first show DELAYED, never claim stale
+  // telemetry is LIVE or permit remote commands while readings are late.
+  const latest=await fetch(host+'/api/device/telemetry', {
+    method:'POST',headers,body:JSON.stringify({...fresh,commandApplied:accepted.commandId,speedLimit:25})
+  });
+  assert.equal(latest.status,200);
+  const statusNow=await (await fetch(host+'/api/device/status',{headers:{cookie}})).json();
+  assert.equal(statusNow.connectionQuality,'fresh');
+  assert.equal(statusNow.deviceOnline,true);
+  await new Promise(r=>setTimeout(r,4900));
+  const delayed=await (await fetch(host+'/api/device/status',{headers:{cookie}})).json();
+  assert.equal(delayed.deviceOnline,true);
+  assert.equal(delayed.connectionQuality,'delayed');
+  assert.equal(delayed.activePods,null,'Stale pod data cannot be counted as online');
+  assert.equal((await postLimit(35)).status,409,'Stale ESP32 must not receive control commands');
+  await new Promise(r=>setTimeout(r,7700));
+  const offline=await (await fetch(host+'/api/device/status',{headers:{cookie}})).json();
+  assert.equal(offline.deviceOnline,false);
+  assert.equal(offline.connectionQuality,'offline');
+  assert.equal(offline.activePods,null);
 });
