@@ -33,6 +33,7 @@
 #if CLOUD_UPLINK_ENABLED
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WebSocketsClient.h>
 #include <time.h>
 // HTTPS TLS trust anchor is embedded in main.cpp to simplify one-file setup.
 // Keep certificate validation ENABLED; never disable certificate verification.
@@ -534,13 +535,18 @@ const char index_html[] PROGMEM = R"PARKSENSE_HTML(
 #if CLOUD_UPLINK_ENABLED
 // Network I/O in a separate FreeRTOS task, never in the main alert-control loop.
 void cloudTelemetryTask(void *ignored) {
-  // Only the alarm WARNING threshold may be updated remotely.
+  // WSS streaming: one secure connection, updates every 350ms.
+  // HTTPS POST: compatibility fallback when WSS is unavailable.
+  // Network I/O stays on Core 0; local GPIO / ESP-NOW control in loop() remains independent.
   String lastAppliedCommandId;
   configTime(0, 0, "pool.ntp.org", "time.google.com");
 
-  // Keep the TLS + HTTP client objects alive inside this dedicated FreeRTOS
-  // task. A reused HTTPS connection can avoid a fresh TLS handshake for every
-  // upload. Server/proxy may still close it; HTTPClient will reconnect.
+  WebSocketsClient deviceWss;
+  const String authHeader=String("Authorization: Bearer ") + CLOUD_DEVICE_TOKEN;
+  bool wssStarted=false;
+  unsigned long lastStreamSent=0, streamCount=0;
+  unsigned long wifiConnectedAt=0, lastWifiAttempt=0;
+  bool wasConnected=false;
   WiFiClientSecure secureClient;
   secureClient.setCACert(CLOUD_ROOT_CA);
   secureClient.setTimeout(4);
@@ -548,96 +554,141 @@ void cloudTelemetryTask(void *ignored) {
   http.setTimeout(3500);
   http.setConnectTimeout(3500);
   http.setReuse(true);
-  bool httpReady = false;
-  bool wasConnected = false;
-  unsigned long lastWifiAttempt = 0;
-  unsigned long lastUploadDone = 0;
-  unsigned long successUploads = 0;
-  int previousHttpCode = 0;
+  bool httpReady=false;
+  unsigned long lastFallbackUpload=0;
+  int lastFallbackCode=0;
+
+  deviceWss.onEvent([&](WStype_t type, uint8_t *payload, size_t length) {
+    if(type==WStype_CONNECTED) {
+      Serial.printf("[Cloud] WSS LIVE | CH=%d | RSSI=%d dBm\n",
+                    (int)currentWifiChannel, WiFi.RSSI());
+    }else if(type==WStype_DISCONNECTED) {
+      Serial.println("[Cloud] WSS disconnected; HTTPS fallback available");
+    }else if(type==WStype_TEXT && length > 0 && length <= 256) {
+      JsonDocument reply;
+      if(deserializeJson(reply,payload,length)) return;
+      const char *typeName=reply["type"] | "";
+      const char *id=reply["id"] | "";
+      const int requested=reply["value"] | -1;
+      if(strcmp(typeName,"set_speed_limit")==0 && strlen(id)==16 &&
+         requested>=5 && requested<=100) {
+        bool validId=true;
+        for(int i=0;i<16;i++){
+          if(!((id[i]>='0'&&id[i]<='9')||(id[i]>='a'&&id[i]<='f')))validId=false;
+        }
+        if(!validId)return;
+        speedLimit=requested; // WARNING only: no throttle or brake actuation
+        lastAppliedCommandId=id;
+        Serial.printf("[Cloud] WSS warning threshold applied: %d km/h\n", requested);
+      }
+    }
+  });
 
   for (;;) {
-    const bool connected = WiFi.status() == WL_CONNECTED;
-    if (connected != wasConnected) {
-      if (connected) {
-        const int channel = WiFi.channel();
-        currentWifiChannel = channel >= 1 && channel <= 14 ? channel : 0;
-        Serial.printf("[Cloud] Hotspot connected | CH %d | RSSI %d dBm\n",
-                      (int)currentWifiChannel, WiFi.RSSI());
-        // IMPORTANT: AP+STA shares one radio. The AP automatically follows
-        // the hotspot's channel. Do NOT force esp_wifi_set_channel() or
-        // restart SoftAP while STA is connected; this can disrupt ESP-NOW.
-        // Pods must already transmit on the same channel to be heard.
-      } else {
-        Serial.println("[Cloud] Hotspot disconnected; local alarms still active");
-        currentWifiChannel = 0;
-        if (httpReady) http.end();
-        httpReady = false;
+    const bool connected=WiFi.status()==WL_CONNECTED;
+    if(connected!=wasConnected) {
+      if(connected) {
+        wifiConnectedAt=millis();
+        const int ch=WiFi.channel();
+        currentWifiChannel=(ch>=1&&ch<=14)?ch:0;
+        Serial.printf("[Cloud] Hotspot CH=%d RSSI=%d dBm\n",
+                      (int)currentWifiChannel,WiFi.RSSI());
+      }else{
+        currentWifiChannel=0;
+        wifiConnectedAt=0;
+        if(wssStarted){deviceWss.disconnect();wssStarted=false;}
+        if(httpReady){http.end();httpReady=false;}
         secureClient.stop();
+        Serial.println("[Cloud] Wi-Fi offline, physical warning logic unaffected");
       }
-      wasConnected = connected;
+      wasConnected=connected;
     }
-
-    if (!connected && (lastWifiAttempt == 0 || millis() - lastWifiAttempt >= 10000UL)) {
-      lastWifiAttempt = millis();
-      // Channel 0 lets station discover phone hotspot's REAL channel.
-      // This does not automatically retune independent ESP-NOW pods.
-      WiFi.begin(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 0);
+    if(!connected&&(lastWifiAttempt==0||millis()-lastWifiAttempt>=10000UL)){
+      lastWifiAttempt=millis();
+      WiFi.begin(CLOUD_WIFI_SSID,CLOUD_WIFI_PASSWORD,0); // follow phone hotspot channel
     }
-
-    if (connected && time(nullptr) > 1700000000 && currentWifiChannel >= 1 &&
-        (lastUploadDone == 0 || millis()-lastUploadDone >=
-           (previousHttpCode == HTTP_CODE_OK ? 850UL : 1700UL))) {
-      JsonDocument doc;
-      makeTelemetry(doc);
-      doc["cloudControl"] = 1;
-      if (lastAppliedCommandId.length() == 16) doc["commandApplied"] = lastAppliedCommandId;
-      String outgoing;
-      serializeJson(doc, outgoing);
-      const unsigned long start = millis();
-      if (!httpReady) {
-        httpReady = http.begin(secureClient, CLOUD_API_URL);
-        if (httpReady) {
-          http.addHeader("Authorization", String("Bearer ") + CLOUD_DEVICE_TOKEN);
-          http.addHeader("Content-Type", "application/json");
-          http.setReuse(true);
+    if(connected && currentWifiChannel>=1 && time(nullptr)>1700000000){
+      if(!wssStarted){
+        // CA-pinned HTTPS trust, no 'insecure' fallback. Cloudflare reverse
+        // proxy must support WebSocket Upgrade for /ws/device.
+        deviceWss.beginSslWithCA("parkingdashboard.my.id",443,"/ws/device",CLOUD_ROOT_CA);
+        deviceWss.setExtraHeaders(authHeader.c_str());
+        deviceWss.setReconnectInterval(5000);
+        deviceWss.enableHeartbeat(15000,4500,2);
+        wssStarted=true;
+      }
+      deviceWss.loop();
+      if(deviceWss.isConnected()){
+        if(httpReady){http.end();httpReady=false;secureClient.stop();}
+        if(lastStreamSent==0||millis()-lastStreamSent>=350UL){
+          JsonDocument doc;
+          makeTelemetry(doc);
+          doc["cloudControl"]=1;
+          if(lastAppliedCommandId.length()==16)doc["commandApplied"]=lastAppliedCommandId;
+          String packet;
+          serializeJson(doc,packet);
+          if(deviceWss.sendTXT(packet)){
+            lastStreamSent=millis();
+            streamCount++;
+            if(streamCount%40==1)Serial.printf("[Cloud] WSS sent=%lu RSSI=%d CH=%d\n",
+                                            streamCount,WiFi.RSSI(),(int)currentWifiChannel);
+          }
         }
-      }
-      int status = httpReady ? http.POST(outgoing) : -1;
-      if (status == HTTP_CODE_OK) {
-        ++successUploads;
-        const String answer = http.getString();
-        if (answer.length() > 0 && answer.length() <= 512) {
-          JsonDocument reply;
-          if (!deserializeJson(reply, answer)) {
-            JsonVariantConst command = reply["command"];
-            const char *type = command["type"] | "";
-            const char *id = command["id"] | "";
-            const int requested = command["value"] | -1;
-            if (strcmp(type, "set_speed_limit") == 0 &&
-                strlen(id) == 16 && requested >= 5 && requested <= 100) {
-              speedLimit = requested;  // ONLY warning threshold, not brake/throttle
-              lastAppliedCommandId = id;
-              Serial.printf("[Cloud] Warning threshold applied: %d km/h\n", requested);
+      }else if(wifiConnectedAt && millis()-wifiConnectedAt>=8000UL &&
+               (lastFallbackUpload==0||millis()-lastFallbackUpload>=
+                 (lastFallbackCode==HTTP_CODE_OK?2200UL:3500UL))){
+        // Only retry POST if WSS has not connected. Avoid parallel HTTPS
+        // handshakes flooding the phone hotspot.
+        JsonDocument doc;
+        makeTelemetry(doc);
+        doc["cloudControl"]=1;
+        if(lastAppliedCommandId.length()==16)doc["commandApplied"]=lastAppliedCommandId;
+        String packet;
+        serializeJson(doc,packet);
+        if(!httpReady){
+          httpReady=http.begin(secureClient,CLOUD_API_URL);
+          if(httpReady){
+            http.addHeader("Authorization",String("Bearer ")+CLOUD_DEVICE_TOKEN);
+            http.addHeader("Content-Type","application/json");
+            http.setReuse(true);
+          }
+        }
+        const unsigned long start=millis();
+        const int status=httpReady?http.POST(packet):-1;
+        if(status==HTTP_CODE_OK){
+          const String response=http.getString();
+          if(response.length()>0 && response.length()<=512){
+            JsonDocument reply;
+            if(!deserializeJson(reply,response)){
+              JsonVariantConst cmd=reply["command"];
+              const char *typeName=cmd["type"] | "";
+              const char *id=cmd["id"] | "";
+              const int requested=cmd["value"] | -1;
+              if(strcmp(typeName,"set_speed_limit")==0 &&
+                 strlen(id)==16 && requested>=5 && requested<=100){
+                bool validId=true;
+                for(int i=0;i<16;i++){
+                  if(!((id[i]>='0'&&id[i]<='9')||(id[i]>='a'&&id[i]<='f')))validId=false;
+                }
+                if(validId){
+                  speedLimit=requested;
+                  lastAppliedCommandId=id;
+                  Serial.printf("[Cloud] HTTPS warning threshold applied=%d\n",requested);
+                }
+              }
             }
           }
         }
+        Serial.printf("[Cloud] HTTPS FALLBACK=%d time=%lu ms RSSI=%d CH=%d\n",
+                      status,millis()-start,WiFi.RSSI(),(int)currentWifiChannel);
+        if(status<0){
+          http.end();httpReady=false;secureClient.stop();
+        }
+        lastFallbackCode=status;
+        lastFallbackUpload=millis();
       }
-      const unsigned long elapsed = millis() - start;
-      // A concise log every ~10 successful packets plus every failure makes
-      // it easy to distinguish TLS/HTTP delay from ESP-NOW sensor loss.
-      if (status != HTTP_CODE_OK || successUploads % 10 == 1) {
-        Serial.printf("[Cloud] POST=%d | %lu ms | RSSI=%d | CH=%d\n",
-                      status, elapsed, WiFi.RSSI(), (int)currentWifiChannel);
-      }
-      if (status < 0) {
-        http.end(); // reset broken transport; CA verification stays enabled
-        secureClient.stop();
-        httpReady = false;
-      }
-      previousHttpCode = status;
-      lastUploadDone = millis();
     }
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(35));
   }
 }
 #endif
@@ -685,7 +736,7 @@ void setup() {
   // Start only after all 3 local config fields have been filled. No Wi-Fi
   // association attempts while example credentials are in this file.
   if (cloudCredentialsValid()) {
-    BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",12288,nullptr,1,nullptr,0);
+    BaseType_t ok=xTaskCreatePinnedToCore(cloudTelemetryTask,"ParkSenseCloud",16384,nullptr,1,nullptr,0);
     if(ok!=pdPASS) Serial.println("[Cloud] Background task could not start");
   }
 #endif
