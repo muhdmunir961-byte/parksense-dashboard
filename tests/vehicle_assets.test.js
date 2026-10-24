@@ -40,18 +40,22 @@ test('Security policy restricts external 3D frames and remote control uses verif
 
 test('ESP32 remote setting applies only warning threshold with 5-100 km/h validation',()=>{
   assert.match(firmware,/#define CLOUD_UPLINK_ENABLED true/);
-  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"/);
+  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_HOTSPOT_WIFI_2_4GHZ"/);
   assert.match(firmware,/#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"/);
   assert.match(firmware,/#define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"/);
   assert.match(firmware,/bool cloudCredentialsValid\(\)/);
   assert.match(firmware,/if \(cloudCredentialsValid\(\)\)/);
   assert.doesNotMatch(firmware,/#include "cloud_config\.h"/);
-  assert.match(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 1\)/);
+  assert.match(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 0\)/);
+  assert.match(firmware,/doc\["wifiChannel"\] = \(int\)currentWifiChannel/);
+  assert.match(firmware,/http\.setReuse\(true\)/);
+  assert.match(firmware,/secureClient\.setCACert\(CLOUD_ROOT_CA\)/);
+  assert.doesNotMatch(firmware,/esp_wifi_set_channel\(1, WIFI_SECOND_CHAN_NONE\)/);
   assert.match(firmware,/doc\["cloudControl"\] = 1/);
-  assert.match(firmware,/strcmp\(type,"set_speed_limit"\)==0/);
-  assert.match(firmware,/requested>=5 && requested<=100/);
-  assert.match(firmware,/speedLimit=requested/);
-  assert.match(firmware,/lastAppliedCommandId=id/);
+  assert.match(firmware,/strcmp\(type,\s*"set_speed_limit"\)\s*==\s*0/);
+  assert.match(firmware,/requested\s*>=\s*5 && requested\s*<=\s*100/);
+  assert.match(firmware,/speedLimit\s*=\s*requested/);
+  assert.match(firmware,/lastAppliedCommandId\s*=\s*id/);
   assert.match(firmware,/updateHardwareAlerts\(\);/);
   assert.doesNotMatch(firmware,/setInsecure\(/);
   assert.doesNotMatch(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD\);/);
@@ -59,7 +63,7 @@ test('ESP32 remote setting applies only warning threshold with 5-100 km/h valida
 
 test('One-file ESP32 configuration is safe and the old wizard never writes unused secrets',()=>{
   assert.match(firmware,/#define CLOUD_UPLINK_ENABLED true/);
-  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_WIFI_2_4GHZ_CH1"/);
+  assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_HOTSPOT_WIFI_2_4GHZ"/);
   assert.match(firmware,/#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"/);
   assert.match(firmware,/#define CLOUD_DEVICE_TOKEN "ISI_DEVICE_TOKEN_COOLIFY_MIN_24"/);
   assert.match(firmware,/bool cloudCredentialsValid\(\)/);
