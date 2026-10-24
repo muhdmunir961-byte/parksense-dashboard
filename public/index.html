@@ -449,6 +449,8 @@ body.warning-open{overflow:hidden}
   <div class="cloud-check" aria-label="Connection self-check">
     <div><span>WEBSITE SERVER</span><strong id="cloudServerStatus">CHECKING</strong></div>
     <div><span>ESP32 DEVICE</span><strong id="cloudDeviceStatus">CHECKING</strong></div>
+    <div><span>UPLINK TRANSPORT</span><strong id="cloudTransport">—</strong></div>
+    <div><span>LIVE PACKET INTERVAL</span><strong id="cloudPacketInterval">—</strong></div>
     <div><span>HOTSPOT CHANNEL</span><strong id="cloudWifiChannel">—</strong></div>
     <div><span>ACTIVE SENSOR PODS</span><strong id="cloudPodCount">—</strong></div>
     <div><span>LAST ESP32 REPORT</span><strong id="cloudLastSeen">—</strong></div>
@@ -478,6 +480,7 @@ body.warning-open{overflow:hidden}
   let mode='demo', socket=null, wantsConnection=false, reconnectTimer=null, lastTelemetry=0, remoteControl=false, lastAlert='', demoStep=0, lastSensorState={};
   let limitPending=false;
   let telemetry={systemEnabled:false,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};
+  let cloudTransport='unknown',lastPacketInterval=null;
   let eventLog=[];
   let demoProfile='normal';
   if(location.protocol==='http:' && location.hostname && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
@@ -1312,13 +1315,20 @@ body.warning-open{overflow:hidden}
     updateCarOverview();
     if(headline!==lastAlert){lastAlert=headline;log((mode==='demo'?'[Demo] ':'')+headline);}
   }
-  function parseData(payload){
+  function parseData(payload,transport){
     if(!payload||typeof payload!=='object'||!('distF'in payload)||!('maxSpeed'in payload))return;
+    const now=Date.now();
+    const interval=lastTelemetry>0?now-lastTelemetry:null;
+    // Only measure plausible adjacent packets. Browser tab throttling can skew it.
+    lastPacketInterval=interval!==null&&interval<=10000?interval:null;
+    cloudTransport=transport==='wss'?'wss':transport==='https'?'https':'unknown';
+    $('cloudTransport').textContent=cloudTransport==='wss'?'WSS STREAM':cloudTransport==='https'?'HTTPS FALLBACK':'UNKNOWN';
+    $('cloudPacketInterval').textContent=lastPacketInterval!==null?lastPacketInterval+' ms':'MEASURING';
     telemetry={...telemetry,...payload};remoteControl=payload.remoteControl===true;
-    lastTelemetry=Date.now();$('lastUpdate').textContent='Live reading · '+stamp();updateControls();render();reflectLimitInput();
+    lastTelemetry=now;$('lastUpdate').textContent='Live reading · '+stamp();updateControls();render();reflectLimitInput();
   }
   function clearConnection(){wantsConnection=false;clearTimeout(reconnectTimer);if(socket){let old=socket;socket=null;old.onclose=null;old.onmessage=null;old.onerror=null;try{old.close()}catch(e){}}}
-  function startDemo(){clearConnection();remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
+  function startDemo(){clearConnection();cloudTransport='unknown';lastPacketInterval=null;$('cloudTransport').textContent='DEMO';$('cloudPacketInterval').textContent='—';remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
   function connect(){
     const url=$('wsUrl').value.trim();
     if(!/^wss?:\/\/[a-zA-Z0-9.\-\[\]:]+(?:\/[^\s]*)?$/.test(url)){$('connectHelp').textContent='Enter a valid ws:// or wss:// WebSocket address.';return;}
@@ -1334,7 +1344,7 @@ body.warning-open{overflow:hidden}
     socket=candidate;
     candidate.onopen=()=>{if(candidate!==socket)return;setMode('live','connecting');$('connectHelp').textContent='Connected to Coolify relay — waiting for ESP32 telemetry.';log('Connected to secure relay; waiting for ESP32');};
     candidate.onmessage=event=>{if(candidate!==socket)return;try{const msg=JSON.parse(event.data);
-      if(msg.type==='telemetry'){setMode('live','connected');$('connectHelp').textContent='Live ESP32 telemetry is connected through Coolify.';parseData(msg.data);}
+      if(msg.type==='telemetry'){setMode('live','connected');$('connectHelp').textContent='Live ESP32 telemetry is connected through Coolify ('+(msg.transport==='wss'?'WSS streaming':msg.transport==='https'?'HTTPS fallback':'telemetry')+').';parseData(msg.data,msg.transport);}
       else if(msg.type==='speed_limit_command'){
         if(msg.state==='pending'){
           limitPending=true;reportLimit('Setting '+msg.value+' km/h · waiting for ESP32…','pending');updateControls();
@@ -1404,13 +1414,17 @@ body.warning-open{overflow:hidden}
         $('cloudDeviceStatus').textContent='LOGIN EXPIRED';
         $('cloudLastSeen').textContent='—';
         $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
+        $('cloudTransport').textContent='—';$('cloudPacketInterval').textContent='—';
       }else if(!res[1].ok){
         $('cloudDeviceStatus').textContent='STATUS ERROR';
         $('cloudLastSeen').textContent='—';
         $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
+        $('cloudTransport').textContent='—';$('cloudPacketInterval').textContent='—';
       }else{
         const state=await res[1].json();
         $('cloudDeviceStatus').textContent=state.deviceOnline?'RECEIVING DATA':'OFFLINE / NO DATA';
+        $('cloudTransport').textContent=state.deviceOnline?(state.transport==='wss'?'WSS STREAM':state.transport==='https'?'HTTPS FALLBACK':'UNKNOWN'):'—';
+        if(!state.deviceOnline||state.connectionQuality!=='fresh')$('cloudPacketInterval').textContent='NO FRESH DATA';
         $('cloudWifiChannel').textContent=state.deviceOnline&&Number.isInteger(state.wifiChannel)?'CH '+state.wifiChannel:'—';
         $('cloudPodCount').textContent=state.deviceOnline&&Number.isInteger(state.activePods)?state.activePods+' / 4':'—';
         $('cloudLastSeen').textContent=state.updatedAt
@@ -1420,6 +1434,7 @@ body.warning-open{overflow:hidden}
     }catch(error){
       $('cloudServerStatus').textContent='UNREACHABLE';
       $('cloudDeviceStatus').textContent='UNKNOWN';
+      $('cloudTransport').textContent='—';$('cloudPacketInterval').textContent='—';
       $('cloudLastSeen').textContent='—';
       $('cloudWifiChannel').textContent='—';$('cloudPodCount').textContent='—';
     }finally{
