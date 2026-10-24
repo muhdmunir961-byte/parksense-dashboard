@@ -487,9 +487,22 @@ body.warning-open{overflow:hidden}
   }
   function stamp(){return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
   function log(message){if(eventLog[0] && eventLog[0].message===message)return;eventLog.unshift({message,time:stamp()});eventLog=eventLog.slice(0,5);$('eventList').replaceChildren(...eventLog.map(x=>{let e=document.createElement('div'),s=document.createElement('span'),t=document.createElement('time');e.className='event';s.textContent=x.message;t.textContent=x.time;e.append(s,t);return e}));}
-  function setMode(next,status){mode=next;$('modeText').textContent=next==='demo'?'DEMO MODE':'LIVE MODE';$('modeDot').className='dot '+(next==='demo'?'demo':'good');$('readingType').textContent=next==='demo'?'SIMULATED':'ESP32 FEED';$('connectionDot').className='dot '+(status==='connected'?'good':'bad');$('connectionText').textContent=next==='demo'?'DEVICE NOT CONNECTED':status==='connected'?'DEVICE CONNECTED':status==='connecting'?'CONNECTING…':'DEVICE DISCONNECTED';$('lastUpdate').textContent=next==='demo'?'Last update — demonstration':'Last update — awaiting data';updateControls();}
+  function setMode(next,status){
+    mode=next;
+    $('modeText').textContent=next==='demo'?'DEMO MODE':'LIVE MODE';
+    $('modeDot').className='dot '+(next==='demo'?'demo':status==='connected'?'good':status==='delayed'?'demo':'bad');
+    $('readingType').textContent=next==='demo'?'SIMULATED':status==='delayed'?'LAST KNOWN':'ESP32 FEED';
+    $('connectionDot').className='dot '+(status==='connected'?'good':status==='delayed'?'demo':'bad');
+    $('connectionText').textContent=next==='demo'?'DEVICE NOT CONNECTED':
+      status==='connected'?'DEVICE CONNECTED':status==='delayed'?'DATA DELAYED':
+      status==='connecting'?'CONNECTING…':'DEVICE DISCONNECTED';
+    if(next==='demo')$('lastUpdate').textContent='Last update — demonstration';
+    else if(status==='connecting'||status==='disconnected')$('lastUpdate').textContent='Last update — awaiting data';
+    updateControls();
+  }
   function updateControls(){
-    const ready=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN);
+    const ready=mode==='demo'||(mode==='live'&&remoteControl&&socket&&socket.readyState===WebSocket.OPEN &&
+      $('connectionText').textContent==='DEVICE CONNECTED'&&lastTelemetry>0&&Date.now()-lastTelemetry<4500);
     for(const id of ['limitMinus','limitPlus','limitReset','limitApply','limitTarget'])$(id).disabled=!ready||limitPending;
     $('controlHint').textContent=mode==='demo'
       ?'Simulation only: changing the threshold does not affect ESP32.'
@@ -1233,6 +1246,9 @@ body.warning-open{overflow:hidden}
     let state='unknown',heading='Awaiting radio telemetry',copy='Connect the ESP32 to see its current Wi-Fi channel and incoming pod readings.';
     if(mode==='demo'){
       state='demo';heading='Demo sensor values';copy='Sample data only. No real hotspot or ESP-NOW channel is being measured.';
+    }else if(mode==='live'&&$('connectionText').textContent==='DATA DELAYED'){
+      state='warning';heading='Telemetry delayed — readings not live';
+      copy='Last packet is getting old. Pod values below are last-known readings, not fresh safety information.';
     }else if(connected){
       if(channel===null){
         heading='Firmware channel not reported';
@@ -1277,10 +1293,13 @@ body.warning-open{overflow:hidden}
       if(lastSensorState[key]&&lastSensorState[key]!==label&&(human||sev==='danger'||sev==='offline')&&mode==='live')log((key==='Rt'?'RIGHT':key==='F'?'FRONT':key==='R'?'REAR':'LEFT')+' sensor: '+label.toLowerCase());
       lastSensorState[key]=label;
     });
-    $('activePods').textContent=active+' / 4 PODS';
+    $('activePods').textContent=mode==='live'&&$('connectionText').textContent!=='DEVICE CONNECTED'
+      ?'— / 4 LIVE PODS':active+' / 4 PODS';
     updateRadioHealth(active);
     let headline='Normal operation',message='Vehicle speed and detected distances are within the monitored thresholds.',tone='',symbol='✓';
-    if(mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED'){headline='Waiting for ESP32 telemetry';message='Cloud dashboard is online, but the controller is offline. Connect the ESP32 to Wi-Fi to receive live alerts.';tone='warn';symbol='!';}
+    if(mode==='live'&&$('connectionText').textContent==='DATA DELAYED'){
+      headline='Telemetry delayed';message='The newest ESP32 packet is late. The displayed measurements are last-known values, NOT current safety readings. Local hardware alarms remain independent.';tone='warn';symbol='!';
+    }else if(mode==='live' && $('connectionText').textContent!=='DEVICE CONNECTED'){headline='Waiting for ESP32 telemetry';message='Cloud dashboard is online, but the controller is offline. Connect the ESP32 to Wi-Fi to receive live alerts.';tone='warn';symbol='!';}
     else if(mode==='live' && telemetry.systemEnabled!==true){headline='Parking mode OFF';message='GPIO14 switch is OFF: all physical LED and buzzer outputs are disabled. Live sensor monitoring continues.';tone='warn';symbol='!';}
     else if(active===0){headline='No sensor signal';message='No ESP-NOW pod data is available. Check sensor power and communications.';tone='warn';symbol='!';}
     else if(min<15){headline='Immediate obstacle alert';message='A sensor detects an object under 15 cm. Solid red LED and continuous buzzer.';tone='danger';symbol='!';}
@@ -1296,7 +1315,7 @@ body.warning-open{overflow:hidden}
   function parseData(payload){
     if(!payload||typeof payload!=='object'||!('distF'in payload)||!('maxSpeed'in payload))return;
     telemetry={...telemetry,...payload};remoteControl=payload.remoteControl===true;
-    lastTelemetry=Date.now();$('lastUpdate').textContent='Last update — '+stamp();updateControls();render();reflectLimitInput();
+    lastTelemetry=Date.now();$('lastUpdate').textContent='Live reading · '+stamp();updateControls();render();reflectLimitInput();
   }
   function clearConnection(){wantsConnection=false;clearTimeout(reconnectTimer);if(socket){let old=socket;socket=null;old.onclose=null;old.onmessage=null;old.onerror=null;try{old.close()}catch(e){}}}
   function startDemo(){clearConnection();remoteControl=false;limitPending=false;demoStep=0;demoProfile='normal';setActiveScenario();telemetry={systemEnabled:true,maxSpeed:8,speedLimit:15,distF:85,distR:120,distL:64,distRefR:95,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('demo','disconnected');log('Switched to simulation');render();reflectLimitInput();reportLimit('DEMO ONLY · Device not controlled.','demo');}
@@ -1328,7 +1347,19 @@ body.warning-open{overflow:hidden}
           reportLimit('Not applied: '+(msg.message||'ESP32 did not acknowledge.'),'error');
         }
       }else if(msg.type==='status'){
-        if(!msg.deviceOnline){limitPending=false;remoteControl=false;lastTelemetry=0;telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};setMode('live','disconnected');$('connectHelp').textContent='Coolify relay online; ESP32 device is offline or no data in the last 5 seconds.';render();}
+        if(!msg.deviceOnline){
+          limitPending=false;remoteControl=false;lastTelemetry=0;
+          telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};
+          setMode('live','disconnected');
+          $('connectHelp').textContent='Coolify relay online; ESP32 has not delivered a packet in 12 seconds.';
+          render();
+        }else if(msg.connectionQuality==='delayed'&&mode==='live'){
+          if($('connectionText').textContent!=='DATA DELAYED'){
+            setMode('live','delayed');
+            $('connectHelp').textContent='ESP32 packet delayed by phone hotspot or HTTPS. Last-known data only; local hardware warnings are independent.';
+            render();
+          }
+        }
       } else if(msg.type==='error'){$('connectHelp').textContent=msg.message||'Server rejected command';}
     }catch(e){console.warn('Invalid relay message:',e)}};
     candidate.onerror=()=>{if(candidate===socket)$('connectHelp').textContent='Unable to reach the Coolify relay. Check your public HTTPS domain and session.';};
@@ -1420,12 +1451,18 @@ body.warning-open{overflow:hidden}
         telemetry.maxSpeed=27;telemetry.distF=95;telemetry.humanF=0;
       }
       $('lastUpdate').textContent='Simulated update · '+stamp();render();
-    }else if(lastTelemetry&&Date.now()-lastTelemetry>5500){
-      if($('connectionText').textContent==='DEVICE CONNECTED'){
-        $('lastUpdate').textContent='No recent telemetry received';
-        setMode('live','disconnected');
-        telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};render();
-        // The WebSocket can remain open while the ESP32 has stopped sending telemetry.
+    }else if(mode==='live'&&lastTelemetry){
+      const age=Date.now()-lastTelemetry;
+      if(age>=12000){
+        lastTelemetry=0;remoteControl=false;limitPending=false;
+        telemetry={...telemetry,systemEnabled:false,maxSpeed:0,distF:-1,distR:-1,distL:-1,distRefR:-1,humanF:0,humanR:0,humanL:0,humanRefR:0,wifiChannel:null};
+        setMode('live','disconnected');render();
+        $('connectHelp').textContent='No ESP32 telemetry for 12 seconds. Check hotspot, device and HTTPS logs.';
+      }else if(age>=4500){
+        if($('connectionText').textContent!=='DATA DELAYED'){
+          setMode('live','delayed');render();
+        }
+        $('lastUpdate').textContent='LAST-KNOWN DATA · '+Math.floor(age/1000)+' s old';
       }
     }
   },1000);
