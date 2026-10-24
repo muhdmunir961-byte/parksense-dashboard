@@ -156,4 +156,60 @@ test('Auth, protected telemetry and browser WebSocket', async (t)=>{
   assert.equal(offline.deviceOnline,false);
   assert.equal(offline.connectionQuality,'offline');
   assert.equal(offline.activePods,null);
+
+  // Persistent device WSS is authenticated independently from browser cookies.
+  const untrusted=new WebSocket(`ws://127.0.0.1:${port}/ws/device`);
+  const authRejected=await new Promise(resolve=>{
+    untrusted.on('unexpected-response',(_request,res)=>resolve(res.statusCode));
+    untrusted.on('error',()=>resolve(401));
+  });
+  assert.equal(authRejected,401);
+
+  const dev=new WebSocket(`ws://127.0.0.1:${port}/ws/device`,{
+    headers:{authorization:'Bearer '+token}
+  });
+  t.after(()=>dev.close());
+  await new Promise((resolve,reject)=>{dev.once('open',resolve);dev.once('error',reject);});
+  const wsRelay=new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{ws.off('message',onMessage);reject(Error('WSS device stream did not reach browser'))},1800);
+    function onMessage(raw){
+      let item;try{item=JSON.parse(String(raw))}catch{return}
+      if(item.type==='telemetry'&&item.transport==='wss'&&item.data.wifiChannel===11){
+        clearTimeout(timeout);ws.off('message',onMessage);resolve(item);
+      }
+    }
+    ws.on('message',onMessage);
+  });
+  dev.send(JSON.stringify({...fresh,wifiChannel:11}));
+  const streamed=await wsRelay;
+  assert.equal(streamed.data.maxSpeed,8);
+  const statusFromWss=await (await fetch(host+'/api/device/status',{headers:{cookie}})).json();
+  assert.equal(statusFromWss.deviceOnline,true);
+  assert.equal(statusFromWss.connectionQuality,'fresh');
+  assert.equal(statusFromWss.wifiChannel,11);
+
+  const realtimeCommand=new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{dev.off('message',onCommand);reject(Error('WSS device command did not arrive'))},1800);
+    function onCommand(raw){
+      let item;try{item=JSON.parse(String(raw))}catch{return}
+      if(item.type==='set_speed_limit'&&item.value===32){
+        clearTimeout(timeout);dev.off('message',onCommand);resolve(item);
+      }
+    }
+    dev.on('message',onCommand);
+  });
+  const commandPost=await postLimit(32);
+  assert.equal(commandPost.status,202);
+  const wsCommand=await realtimeCommand;
+  assert.match(wsCommand.id,/^[0-9a-f]{16}$/);
+  dev.send(JSON.stringify({...fresh,commandApplied:wsCommand.id,speedLimit:32,wifiChannel:11}));
+  await new Promise(r=>setTimeout(r,150));
+  const active=await (await fetch(host+'/api/device/status',{headers:{cookie}})).json();
+  assert.equal(active.activePods,4);
+  dev.close();
+  await new Promise(r=>dev.once('close',r));
+  const fallback=await fetch(host+'/api/device/telemetry',{
+    method:'POST',headers,body:JSON.stringify({...fresh,speedLimit:32})
+  });
+  assert.equal(fallback.status,200,'Existing HTTPS fallback should keep working after WSS disconnects');
 });
