@@ -18,7 +18,12 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 1024, perMessageDe
 let lastTelemetry = null;
 let lastSeenAt = 0;
 let lastOnlineState = false;
-const ONLINE_WINDOW_MS = 5000;
+let lastQualityState = 'offline';
+// On phone hotspots a single TLS handshake may exceed 5 seconds.
+// Distinguish delayed telemetry from a disconnected ESP32, without treating
+// old sensor readings as fresh or allowing commands on a stale device.
+const FRESH_WINDOW_MS = 4500;
+const ONLINE_WINDOW_MS = 12000;
 const COMMAND_TTL_MS = 12000; // In-memory, not persistent. Never apply stale instructions.
 const loginAttempts = new Map();
 let pendingLimitCommand = null;
@@ -81,8 +86,18 @@ async function body(req, maxBytes=4096) {
   }
   return Buffer.concat(chunks).toString('utf8');
 }
-function isOnline(){ return lastTelemetry!==null && Date.now()-lastSeenAt < ONLINE_WINDOW_MS; }
-function broadcast(object){ const data=JSON.stringify(object);for(const client of clients)if(client.readyState===WebSocket.OPEN)client.send(data); }
+function telemetryAgeMs(){ return lastTelemetry===null?null:Math.max(0,Date.now()-lastSeenAt); }
+function isOnline(){ return lastTelemetry!==null && telemetryAgeMs()<ONLINE_WINDOW_MS; }
+function isFresh(){ return lastTelemetry!==null && telemetryAgeMs()<FRESH_WINDOW_MS; }
+function connectionQuality(){return isFresh()?'fresh':isOnline()?'delayed':'offline';}
+function broadcast(object){
+  const data=JSON.stringify(object);
+  for(const client of clients)if(client.readyState===WebSocket.OPEN){
+    // Slow viewers must not queue unlimited telemetry and introduce lag.
+    if(client.bufferedAmount>32768)continue;
+    client.send(data);
+  }
+}
 function normNumber(data,key,min,max){const v=Number(data[key]);if(!Number.isFinite(v)||!Number.isInteger(v)||v<min||v>max)return null;return v;}
 function normalise(data){
   if (!data || typeof data!=='object'||Array.isArray(data))return null;
@@ -145,7 +160,10 @@ const server=http.createServer(async(req,res)=>{
       if(!payload)return json(res,422,{error:'Invalid telemetry'});
       const wasOnline=isOnline();
       lastTelemetry=payload;lastSeenAt=Date.now();
-      if(!wasOnline)broadcast({type:'status',deviceOnline:true});
+      if(!wasOnline || lastQualityState!=='fresh'){
+        lastOnlineState=true;lastQualityState='fresh';
+        broadcast({type:'status',deviceOnline:true,connectionQuality:'fresh'});
+      }
       expireCommand();
       // Acknowledgement is explicit: match command ID *and* the new physical limit.
       if(pendingLimitCommand && payload.commandApplied===pendingLimitCommand.id
@@ -154,9 +172,9 @@ const server=http.createServer(async(req,res)=>{
         pendingLimitCommand=null;
         announceCommand('applied',confirmed,'ESP32 confirmed the new alert threshold.');
       }
-      broadcast({type:'telemetry',data:payload});
+      broadcast({type:'telemetry',data:payload,receivedAt:lastSeenAt});
       // ESP32 polls naturally with telemetry HTTPS uploads; NO inbound device port required.
-      const pending=pendingLimitCommand && payload.remoteControl && isOnline()
+      const pending=pendingLimitCommand && payload.remoteControl && isFresh()
         ?{type:'set_speed_limit',id:pendingLimitCommand.id,value:pendingLimitCommand.value}
         :null;
       return json(res,200,{ok:true,command:pending});
@@ -167,7 +185,7 @@ const server=http.createServer(async(req,res)=>{
       if(!String(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))
         return json(res,415,{error:'JSON body required'});
       expireCommand();
-      if(!isOnline()||lastTelemetry.remoteControl!==true)
+      if(!isFresh()||lastTelemetry.remoteControl!==true)
         return json(res,409,{error:'ESP32 not online or firmware does not support dashboard threshold controls'});
       if(pendingLimitCommand)
         return json(res,409,{error:'Previous threshold setting awaits ESP32 confirmation'});
@@ -186,11 +204,14 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='GET' && route==='/api/device/status'){
       if(!authenticated(req))return json(res,401,{error:'Login required'});
       const online=isOnline();
-      const activePods=online
+      const fresh=isFresh();
+      const activePods=fresh
         ?['distF','distR','distL','distRefR'].filter(key=>lastTelemetry[key]>=2).length
-        :0;
+        :null;
       return json(res,200,{
         deviceOnline:online,
+        connectionQuality:connectionQuality(),
+        telemetryAgeMs:telemetryAgeMs(),
         updatedAt:lastSeenAt||null,
         wifiChannel:online?(lastTelemetry.wifiChannel??null):null,
         activePods
@@ -224,18 +245,22 @@ server.on('upgrade',(req,socket,head)=>{
 wss.on('connection',ws=>{
   clients.add(ws);ws.isAlive=true;
   ws.on('pong',()=>{ws.isAlive=true});
-  ws.send(JSON.stringify({type:'status',deviceOnline:isOnline()}));
+  ws.send(JSON.stringify({type:'status',deviceOnline:isOnline(),connectionQuality:connectionQuality(),telemetryAgeMs:telemetryAgeMs()}));
   expireCommand();
   if(pendingLimitCommand)ws.send(JSON.stringify({type:'speed_limit_command',state:'pending',id:pendingLimitCommand.id,value:pendingLimitCommand.value,message:'Waiting for ESP32 acknowledgement'}));
-  if(isOnline())ws.send(JSON.stringify({type:'telemetry',data:lastTelemetry}));
+  if(isFresh())ws.send(JSON.stringify({type:'telemetry',data:lastTelemetry,receivedAt:lastSeenAt}));
   // WebSocket remains read-only; all changes use authenticated, same-origin HTTP POST.
   ws.on('message',()=>ws.send(JSON.stringify({type:'error',message:'Use the dashboard threshold controls; direct WebSocket commands are disabled.'})));
   ws.on('close',()=>clients.delete(ws));
 });
 const interval=setInterval(()=>{
   const online=isOnline();
+  const quality=connectionQuality();
   expireCommand();
-  if(lastOnlineState!==online){lastOnlineState=online;broadcast({type:'status',deviceOnline:online});}
+  if(lastOnlineState!==online || lastQualityState!==quality){
+    lastOnlineState=online;lastQualityState=quality;
+    broadcast({type:'status',deviceOnline:online,connectionQuality:quality,telemetryAgeMs:telemetryAgeMs()});
+  }
   for(const ws of clients){if(!ws.isAlive){ws.terminate();continue;}ws.isAlive=false;ws.ping();}
   // Prevent unbounded login attempt records.
   for(const [key,value] of loginAttempts)if(value.until<Date.now() && value.count===0)loginAttempts.delete(key);
