@@ -46,7 +46,11 @@ test('View opens only creator 3D, never mutates ESP32 telemetry or alarm state',
   assert.match(source,/setVehicleView\('licensed'\)/);
   assert.match(source,/creatorKeyFor\(vehicleMeta\?\.brand,vehicleMeta\?\.model\)/);
   assert.match(source,/if\(view!=='licensed'&&\$\('licensedFrame'\)\.getAttribute\('src'\)\)/);
-  assert.match(source,/parseData\(msg\.data\)/);
+  assert.match(source,/parseData\(msg\.data,msg\.transport\)/);
+  assert.match(html,/id="cloudTransport"/);
+  assert.match(html,/id="cloudPacketInterval"/);
+  assert.match(source,/WSS STREAM/);
+  assert.match(source,/HTTPS FALLBACK/);
   assert.match(source,/hardware alerts unaffected|hardware alarms remain active|hardware LED and buzzer/i);
 });
 
