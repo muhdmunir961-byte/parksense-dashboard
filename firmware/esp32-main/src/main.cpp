@@ -560,7 +560,7 @@ void cloudTelemetryTask(void *ignored) {
 
   deviceWss.onEvent([&](WStype_t type, uint8_t *payload, size_t length) {
     if(type==WStype_CONNECTED) {
-      Serial.printf("[Cloud] WSS LIVE | CH=%d | RSSI=%d dBm\\n",
+      Serial.printf("[Cloud] WSS LIVE | CH=%d | RSSI=%d dBm\n",
                     (int)currentWifiChannel, WiFi.RSSI());
     }else if(type==WStype_DISCONNECTED) {
       Serial.println("[Cloud] WSS disconnected; HTTPS fallback available");
@@ -579,7 +579,7 @@ void cloudTelemetryTask(void *ignored) {
         if(!validId)return;
         speedLimit=requested; // WARNING only: no throttle or brake actuation
         lastAppliedCommandId=id;
-        Serial.printf("[Cloud] WSS warning threshold applied: %d km/h\\n", requested);
+        Serial.printf("[Cloud] WSS warning threshold applied: %d km/h\n", requested);
       }
     }
   });
@@ -591,7 +591,7 @@ void cloudTelemetryTask(void *ignored) {
         wifiConnectedAt=millis();
         const int ch=WiFi.channel();
         currentWifiChannel=(ch>=1&&ch<=14)?ch:0;
-        Serial.printf("[Cloud] Hotspot CH=%d RSSI=%d dBm\\n",
+        Serial.printf("[Cloud] Hotspot CH=%d RSSI=%d dBm\n",
                       (int)currentWifiChannel,WiFi.RSSI());
       }else{
         currentWifiChannel=0;
@@ -630,7 +630,7 @@ void cloudTelemetryTask(void *ignored) {
           if(deviceWss.sendTXT(packet)){
             lastStreamSent=millis();
             streamCount++;
-            if(streamCount%40==1)Serial.printf("[Cloud] WSS sent=%lu RSSI=%d CH=%d\\n",
+            if(streamCount%40==1)Serial.printf("[Cloud] WSS sent=%lu RSSI=%d CH=%d\n",
                                             streamCount,WiFi.RSSI(),(int)currentWifiChannel);
           }
         }
@@ -673,13 +673,13 @@ void cloudTelemetryTask(void *ignored) {
                 if(validId){
                   speedLimit=requested;
                   lastAppliedCommandId=id;
-                  Serial.printf("[Cloud] HTTPS warning threshold applied=%d\\n",requested);
+                  Serial.printf("[Cloud] HTTPS warning threshold applied=%d\n",requested);
                 }
               }
             }
           }
         }
-        Serial.printf("[Cloud] HTTPS FALLBACK=%d time=%lu ms RSSI=%d CH=%d\\n",
+        Serial.printf("[Cloud] HTTPS FALLBACK=%d time=%lu ms RSSI=%d CH=%d\n",
                       status,millis()-start,WiFi.RSSI(),(int)currentWifiChannel);
         if(status<0){
           http.end();httpReady=false;secureClient.stop();
