@@ -22,6 +22,7 @@ let lastTelemetry = null;
 let lastSeenAt = 0;
 let lastOnlineState = false;
 let lastQualityState = 'offline';
+let lastTransport = null;
 // On phone hotspots a single TLS handshake may exceed 5 seconds.
 // Distinguish delayed telemetry from a disconnected ESP32, without treating
 // old sensor readings as fresh or allowing commands on a stale device.
@@ -146,6 +147,7 @@ function acceptTelemetry(payload,source) {
   const wasOnline=isOnline();
   lastTelemetry=payload;
   lastSeenAt=Date.now();
+  lastTransport=source;
   if(!wasOnline || lastQualityState!=='fresh') {
     lastOnlineState=true;
     lastQualityState='fresh';
@@ -230,6 +232,7 @@ const server=http.createServer(async(req,res)=>{
         deviceOnline:online,
         connectionQuality:connectionQuality(),
         telemetryAgeMs:telemetryAgeMs(),
+        transport:online?lastTransport:null,
         updatedAt:lastSeenAt||null,
         wifiChannel:online?(lastTelemetry.wifiChannel??null):null,
         activePods
@@ -272,7 +275,7 @@ server.on('upgrade',(req,socket,head)=>{
 wss.on('connection',ws=>{
   clients.add(ws);ws.isAlive=true;
   ws.on('pong',()=>{ws.isAlive=true});
-  ws.send(JSON.stringify({type:'status',deviceOnline:isOnline(),connectionQuality:connectionQuality(),telemetryAgeMs:telemetryAgeMs()}));
+  ws.send(JSON.stringify({type:'status',deviceOnline:isOnline(),connectionQuality:connectionQuality(),telemetryAgeMs:telemetryAgeMs(),transport:isOnline()?lastTransport:null}));
   expireCommand();
   if(pendingLimitCommand)ws.send(JSON.stringify({type:'speed_limit_command',state:'pending',id:pendingLimitCommand.id,value:pendingLimitCommand.value,message:'Waiting for ESP32 acknowledgement'}));
   if(isFresh())ws.send(JSON.stringify({type:'telemetry',data:lastTelemetry,receivedAt:lastSeenAt}));
