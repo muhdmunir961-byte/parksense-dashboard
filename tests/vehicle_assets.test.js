@@ -38,7 +38,7 @@ test('Security policy restricts external 3D frames and remote control uses verif
   assert.match(server,/const COMMAND_TTL_MS = 12000/);
 });
 
-test('ESP32 remote setting applies only warning threshold with 5-100 km/h validation',()=>{
+test('ESP32 live uplink streams securely using WSS and maintains HTTPS fallback with strict warning control',()=>{
   assert.match(firmware,/#define CLOUD_UPLINK_ENABLED true/);
   assert.match(firmware,/#define CLOUD_WIFI_SSID "ISI_NAMA_HOTSPOT_WIFI_2_4GHZ"/);
   assert.match(firmware,/#define CLOUD_WIFI_PASSWORD "ISI_PASSWORD_WIFI"/);
@@ -46,19 +46,20 @@ test('ESP32 remote setting applies only warning threshold with 5-100 km/h valida
   assert.match(firmware,/bool cloudCredentialsValid\(\)/);
   assert.match(firmware,/if \(cloudCredentialsValid\(\)\)/);
   assert.doesNotMatch(firmware,/#include "cloud_config\.h"/);
-  assert.match(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD, 0\)/);
-  assert.match(firmware,/doc\["wifiChannel"\] = \(int\)currentWifiChannel/);
-  assert.match(firmware,/http\.setReuse\(true\)/);
+  assert.match(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID\s*,\s*CLOUD_WIFI_PASSWORD\s*,\s*0\)/);
+  assert.match(firmware,/doc\["wifiChannel"\]\s*=\s*\(int\)currentWifiChannel/);
+  assert.match(firmware,/beginSslWithCA\(/);
+  assert.match(firmware,/setExtraHeaders\(authHeader\.c_str\(\)\)/);
   assert.match(firmware,/secureClient\.setCACert\(CLOUD_ROOT_CA\)/);
-  assert.doesNotMatch(firmware,/esp_wifi_set_channel\(1, WIFI_SECOND_CHAN_NONE\)/);
-  assert.match(firmware,/doc\["cloudControl"\] = 1/);
-  assert.match(firmware,/strcmp\(type,\s*"set_speed_limit"\)\s*==\s*0/);
-  assert.match(firmware,/requested\s*>=\s*5 && requested\s*<=\s*100/);
+  assert.match(firmware,/HTTPS FALLBACK=/);
+  assert.match(firmware,/http\.setReuse\(true\)/);
+  assert.match(firmware,/strcmp\(typeName,\s*"set_speed_limit"\)\s*==\s*0/);
+  assert.match(firmware,/requested\s*>=\s*5\s*&&\s*requested\s*<=\s*100/);
   assert.match(firmware,/speedLimit\s*=\s*requested/);
   assert.match(firmware,/lastAppliedCommandId\s*=\s*id/);
   assert.match(firmware,/updateHardwareAlerts\(\);/);
   assert.doesNotMatch(firmware,/setInsecure\(/);
-  assert.doesNotMatch(firmware,/WiFi\.begin\(CLOUD_WIFI_SSID, CLOUD_WIFI_PASSWORD\);/);
+  assert.doesNotMatch(firmware,/esp_wifi_set_channel\(1, WIFI_SECOND_CHAN_NONE\)/);
 });
 
 test('One-file ESP32 configuration is safe and the old wizard never writes unused secrets',()=>{
